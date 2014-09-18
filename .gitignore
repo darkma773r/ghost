@@ -1,0 +1,16 @@
+**/*.swp
+**/Makefile
+**/Makefile.in
+**/config.*
+**/.deps
+**/*.swo
+configure
+depcomp
+install-sh
+libtool
+missing
+compile
+stamp-h1
+autom4te.cache
+test-driver
+aclocal.m4
