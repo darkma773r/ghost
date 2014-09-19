@@ -13,11 +13,21 @@ tests/*.swp
 src/*~
 tests/*~
 
+Makefile
+src/Makefile
+tests/Makefile
+
 Makefile.in
 src/Makefile.in
 tests/Makefile.in
 
+config.h
 config.h.in
+config.log
+config.status
+
+src/*.o
+tests/*.o
 
 configure
 depcomp
