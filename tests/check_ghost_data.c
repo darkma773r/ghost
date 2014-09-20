@@ -48,8 +48,8 @@ START_TEST( test_ght_push ) {
 	ght_push( &list, third );
 	
 	/* assert */
-	ck_assert_ptr_eq( &first.node, list.head );
-	ck_assert_ptr_eq( &third->node, list.tail );
+	ck_assert( &first.node == list.head );
+	ck_assert( &third->node == list.tail );
 
 	int i = 1;
 	double d = 2.1;
@@ -93,8 +93,8 @@ START_TEST( test_ght_remove_local ) {
 	ght_remove( &list, third );
 	
 	/* assert */
-	ck_assert_ptr_eq( &second.node, list.head );
-	ck_assert_ptr_eq( &second.node, list.tail );
+	ck_assert( &second.node == list.head );
+	ck_assert( &second.node == list.tail );
 
 	int i = 2;
 	double d = 3.1;
@@ -139,8 +139,8 @@ START_TEST( test_ght_remove_all ) {
 	ght_remove( &list, third );
 	
 	/* assert */
-	ck_assert_ptr_eq( NULL, list.head );
-	ck_assert_ptr_eq( NULL, list.tail );
+	ck_assert( NULL == list.head );
+	ck_assert( NULL == list.tail );
 
 	int i = 0;
 	test_t *cur;
