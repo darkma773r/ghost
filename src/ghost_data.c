@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <xcb/xproto.h>
+#include <xcb/xcb.h>
 
 typedef struct test {
 	int x;

@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <xcb/xcb.h>
-#include <xcb/xproto.h>
 #include <inttypes.h>
 
 #define MAX_STR_LEN 512
