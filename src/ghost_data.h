@@ -35,6 +35,14 @@ elements in the list. */
 		ELEM_PTR_VAR != NULL;\
 		ELEM_PTR_VAR = container_of( (ELEM_PTR_VAR)->node.next, TYPE, node))   
 
+/* Macro for iterating over list elements in such a way as to allow
+the list elements to be removed and their memory freed as the list is tranversed. This
+macro is less efficient than ght_for_each and should only be used when items may need to be removed. */
+#define ght_mod_for_each( LIST_PTR, ITER_PTR, ELEM_PTR_VAR, TYPE )\
+	for ( ght_iter_init( (LIST_PTR), (ITER_PTR) ), ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node );\
+		ELEM_PTR_VAR != NULL;\
+		ght_iter_next( &iter ), ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node )) 
+
 /* List node structure. Structures that will be stored in
 lists should include this as a member named "node". */
 typedef struct list_node_t {
@@ -48,6 +56,12 @@ typedef struct list_t {
 	list_node_t * tail;
 } list_t;
 
+/* List iterator structure */
+typedef struct list_iter_t {
+	list_node_t * next;
+	list_node_t * current;
+} list_iter_t;
+
 /* Adds a node to the end of the list */
 void
 ght_push_node( list_t *list, list_node_t *node );
@@ -56,5 +70,13 @@ ght_push_node( list_t *list, list_node_t *node );
 belong to the given list or the structure will become corrupted. */
 void
 ght_remove_node( list_t *list, list_node_t *node );
+
+/* Initializes the iterator to the start of the given list. The iterator's current pointer will point to the head of the list. A pointer to the current node is returned. */
+list_node_t *
+ght_iter_init( list_t *list, list_iter_t *iter );
+
+/* Advances the iterator to the next node and returns a pointer to the current node. */
+list_node_t *
+ght_iter_next( list_iter_t *iter );
 
 #endif

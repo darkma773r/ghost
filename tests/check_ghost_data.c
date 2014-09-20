@@ -54,6 +54,12 @@ START_TEST( test_ght_push ) {
 	int i = 1;
 	double d = 2.1;
 	test_t *cur;
+
+	/* run through the list once before the test to make sure
+	 we can iterate through it multiple times */
+	ght_for_each( &list, cur, test_t ){}
+
+	/* do the test */
 	ght_for_each( &list, cur, test_t ) {
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
@@ -67,7 +73,7 @@ START_TEST( test_ght_push ) {
 } 
 END_TEST
 
-START_TEST( test_ght_remove_local ) {
+START_TEST( test_ght_remove ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -99,6 +105,7 @@ START_TEST( test_ght_remove_local ) {
 	int i = 2;
 	double d = 3.1;
 	test_t *cur;
+
 	ght_for_each( &list, cur, test_t ) {
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
@@ -144,6 +151,7 @@ START_TEST( test_ght_remove_all ) {
 
 	int i = 0;
 	test_t *cur;
+
 	ght_for_each( &list, cur, test_t ) {
 		i++;
 	} 	
@@ -154,6 +162,113 @@ START_TEST( test_ght_remove_all ) {
 } 
 END_TEST
 
+START_TEST( test_ght_mod_for_each ) {
+	/* arrange */
+	list_t list = EMPTY_LIST;
+
+	test_t *first = (test_t *) malloc( sizeof( test_t ));
+	*first = (test_t) {
+		1, 2.1, { (list_node_t *) 1, (list_node_t *) 48384 }
+	};
+
+	test_t *second = (test_t *) malloc( sizeof( test_t ));
+	*second = (test_t) {
+		2, 3.1, { (list_node_t *) 100, (list_node_t *) 200 }	
+	};
+
+	test_t *third = (test_t *) malloc( sizeof( test_t ));
+	*third = (test_t) {
+		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
+	};
+
+	ght_push( &list, first );
+	ght_push( &list, second );
+	ght_push( &list, third );
+
+	/* act/assert */
+	test_t *cur;
+	list_iter_t iter;
+	int i = 1;
+	double d = 2.1;
+
+	/* run through the list once before the test to make sure we can iterate through it multiple times */
+	ght_mod_for_each( &list, &iter, cur, test_t ){}
+
+	/* do the test */
+	ght_mod_for_each( &list, &iter, cur, test_t ){
+		ck_assert( cur->a == i );
+		ck_assert( cur->b == d ); 
+
+		i++;
+		d += 1;
+	} 	
+
+	ck_assert( i == 4 );
+	
+	free( first );
+	free( second );
+	free( third );
+}
+END_TEST
+
+
+START_TEST( test_remove_ght_mod_for_each ) {
+	/* arrange */
+	list_t list = EMPTY_LIST;
+
+	test_t *first = (test_t *) malloc( sizeof( test_t ));
+	*first = (test_t) {
+		1, 2.1, { (list_node_t *) 1, (list_node_t *) 48384 }
+	};
+
+	test_t *second = (test_t *) malloc( sizeof( test_t ));
+	*second = (test_t) {
+		2, 3.1, { (list_node_t *) 100, (list_node_t *) 200 }	
+	};
+
+	test_t *third = (test_t *) malloc( sizeof( test_t ));
+	*third = (test_t) {
+		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
+	};
+
+	ght_push( &list, first );
+	ght_push( &list, second );
+	ght_push( &list, third );
+
+	/* act/assert */
+	test_t *cur;
+	list_iter_t iter;
+	int i = 1;
+	double d = 2.1;
+
+	/* run through the list once before the test to make sure we can iterate through it multiple times */
+	ght_mod_for_each( &list, &iter, cur, test_t ){}
+
+	/* run the test */
+	ght_mod_for_each( &list, &iter, cur, test_t ){
+		ck_assert( cur->a == i );
+		ck_assert( cur->b == d ); 
+
+		/* remove and free the node */
+		ght_remove( &list, cur );
+		cur->node.next = NULL;
+		cur->node.prev = NULL;
+		free( cur );
+
+		i++;
+		d += 1;
+	} 	
+
+	ck_assert( i == 4 );
+
+	int count = 0;
+	ght_mod_for_each( &list, &iter, cur, test_t) {
+		count++;
+	}
+
+	ck_assert( count == 0 );
+}
+END_TEST
 
 
 Suite *
@@ -169,8 +284,10 @@ ghost_data_suite(){
 	/* add individual tests */
 	tcase_add_test( tc_core, test_create_list );
 	tcase_add_test( tc_core, test_ght_push );
-	tcase_add_test( tc_core, test_ght_remove_local );
+	tcase_add_test( tc_core, test_ght_remove );
 	tcase_add_test( tc_core, test_ght_remove_all );
+	tcase_add_test( tc_core, test_ght_mod_for_each );
+	tcase_add_test( tc_core, test_remove_ght_mod_for_each );
 
 	suite_add_tcase( suite, tc_core );
 
