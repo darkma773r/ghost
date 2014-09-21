@@ -9,7 +9,8 @@
 
 /* Macro that converts a pointer to a structure member into a
 pointer to the containing structure. If the member point is NULL,
-then the macro evaluates to NULL. */
+then the macro evaluates to NULL. The ELEM_PTR expression is evaluated
+twice in this process so it should not contain any side effects. */
 #define container_of( ELEM_PTR, TYPE, MEMBER ) \
 	((ELEM_PTR) != NULL ?\
 	(TYPE *)(((char *)(ELEM_PTR)) - offsetof(TYPE, MEMBER)) : NULL )
@@ -78,5 +79,41 @@ ght_iter_init( list_t *list, list_iter_t *iter );
 /* Advances the iterator to the next node and returns a pointer to the current node. */
 list_node_t *
 ght_iter_next( list_iter_t *iter );
+
+#define MAP_ARR_SIZE 257
+
+typedef int (*hash_fn)( void *key );
+typedef int (*comp_fn)( void *key, void *entry_key );
+
+typedef struct map_entry_t {
+	void *key;
+	void *value;
+	list_node_t node;
+} map_entry_t;
+
+typedef struct map_t {
+	int size;
+	hash_fn hash;
+	comp_fn comp;
+	list_t *arr;
+} map_t;
+
+map_t *
+ght_map_create( hash_fn hash, comp_fn comp );
+
+void
+ght_map_free( map_t *map );
+
+void *
+ght_map_put( map_t *map, void *key, void *value );
+
+void *
+ght_map_get( map_t *map, void *key );
+
+map_entry_t *
+ght_map_get_entry( map_t *map, void *key );
+
+void *
+ght_map_remove( map_t *map, void *key );
 
 #endif

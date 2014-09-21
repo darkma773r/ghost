@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <check.h>
 #include "../src/ghost_data.h"
 
@@ -270,6 +271,54 @@ START_TEST( test_remove_ght_mod_for_each ) {
 }
 END_TEST
 
+int
+test_hash( void *key ){
+	char *char_key = (char *) key;
+	int hc = 17;
+	while ( *char_key){
+		hc += *(char_key++);
+	}
+	return hc;
+}
+
+int
+test_comp( void *key, void *test_key ){
+	return strcmp( (char *) key, (char *) test_key ) == 0;
+}
+
+START_TEST( test_ght_map_put_and_get ){
+	/* arrange */
+	map_t *map = ght_map_create( test_hash, test_comp );
+
+	/* keys */
+	char *apple = "apple",
+		*cat = "cat",
+		*dog = "dog",
+		*zebra = "zebra";
+
+	int a = 1, 
+	    b = 2,
+	    c = 3,
+	    d = 4;
+
+	/* act/assert */
+	ck_assert( ght_map_get( map, apple ) == NULL );
+	ck_assert( ght_map_get( map, cat ) == NULL );
+	ck_assert( ght_map_get( map, dog ) == NULL );
+	ck_assert( ght_map_get( map, zebra ) == NULL );
+
+	ght_map_put( map, apple, &a );
+	ght_map_put( map, cat, &b );
+	ght_map_put( map, dog, &c );
+	ght_map_put( map, zebra, &d );
+
+	ck_assert( ght_map_get( map, apple ) == &a );
+	ck_assert( ght_map_get( map, cat ) == &b );
+	ck_assert( ght_map_get( map, dog ) == &c );
+	ck_assert( ght_map_get( map, zebra ) == &d );
+}
+END_TEST
+
 
 Suite *
 ghost_data_suite(){
@@ -288,6 +337,7 @@ ghost_data_suite(){
 	tcase_add_test( tc_core, test_ght_remove_all );
 	tcase_add_test( tc_core, test_ght_mod_for_each );
 	tcase_add_test( tc_core, test_remove_ght_mod_for_each );
+	tcase_add_test( tc_core, test_ght_map_put_and_get );
 
 	suite_add_tcase( suite, tc_core );
 

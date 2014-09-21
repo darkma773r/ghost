@@ -3,12 +3,8 @@
  */
 
 #include "ghost_data.h" 
-
-typedef struct test {
-	int x;
-	int y;
-	list_node_t node;
-} test;
+#include <stdlib.h>
+#include <string.h>
 
 void
 ght_push_node( list_t *list, list_node_t *node ){
@@ -55,5 +51,65 @@ ght_iter_next( list_iter_t *iter ) {
 		iter->next = iter->current->next;
 	}	
 	return iter->current;
+}
+
+map_t *
+ght_map_create( hash_fn hash, comp_fn comp ){
+	map_t *map = (map_t *) malloc( sizeof( map_t ));
+	if ( map == NULL ){
+		return NULL; /* failed */
+	}
+
+	memset( map, 0, sizeof( map_t ));
+
+	map->hash = hash;
+	map->comp = comp;
+	map->arr = (list_t *) malloc( MAP_ARR_SIZE * sizeof( list_t ));
+
+	memset( map->arr, 0, MAP_ARR_SIZE * sizeof( list_t ));
+
+	return map;
+}
+
+void
+ght_map_free( map_t *map ){
+	free( map->arr );
+	free( map );
+}
+
+void *
+ght_map_put( map_t *map, void *key, void *value ){
+	int idx = map->hash( key ) % MAP_ARR_SIZE;	
+
+	map_entry_t *entry = (map_entry_t *) malloc( sizeof( map_entry_t ));
+	if ( entry == NULL ){
+		return NULL; /* failed */
+	}
+	
+	entry->key = key;
+	entry->value = value;
+
+	ght_push( &(map->arr[idx]), entry ); 
+
+	return value;
+}
+
+void *
+ght_map_get( map_t *map, void *key ){
+	map_entry_t *entry = ght_map_get_entry( map, key );	
+	return entry != NULL ? entry->value : NULL;
+}
+
+map_entry_t *
+ght_map_get_entry( map_t *map, void *key ){
+	int idx = map->hash( key ) % MAP_ARR_SIZE;	
+
+	map_entry_t *entry;
+	ght_for_each( &(map->arr[idx]), entry, map_entry_t ){
+		if ( map->comp( key, entry->key )){
+			return entry;
+		}
+	}	
+	return NULL;
 }
 
