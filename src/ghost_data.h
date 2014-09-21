@@ -6,6 +6,16 @@
 #define _GHOST_DATA_H_
 
 #include <stddef.h>
+#include <xcb/xcb.h>
+
+/* ################## GENERAL ######################## */
+
+/* A version of malloc that fails the program if it can't
+allocate memory. */
+void *
+checked_malloc( size_t size );
+
+/* ################### Lists ########################## */
 
 /* Macro that converts a pointer to a structure member into a
 pointer to the containing structure. If the member point is NULL,
@@ -37,12 +47,15 @@ elements in the list. */
 		ELEM_PTR_VAR = container_of( (ELEM_PTR_VAR)->node.next, TYPE, node))   
 
 /* Macro for iterating over list elements in such a way as to allow
-the list elements to be removed and their memory freed as the list is tranversed. This
-macro is less efficient than ght_for_each and should only be used when items may need to be removed. */
+the list elements to be removed and their memory freed as the list 
+is tranversed. This macro is less efficient than ght_for_each and 
+should only be used when items may need to be removed. */
 #define ght_mod_for_each( LIST_PTR, ITER_PTR, ELEM_PTR_VAR, TYPE )\
-	for ( ght_iter_init( (LIST_PTR), (ITER_PTR) ), ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node );\
+	for ( ght_iter_init( (LIST_PTR), (ITER_PTR) ), \
+		ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node );\
 		ELEM_PTR_VAR != NULL;\
-		ght_iter_next( &iter ), ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node )) 
+		ght_iter_next( &iter ), \
+		ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node )) 
 
 /* List node structure. Structures that will be stored in
 lists should include this as a member named "node". */
@@ -72,48 +85,126 @@ belong to the given list or the structure will become corrupted. */
 void
 ght_remove_node( list_t *list, list_node_t *node );
 
-/* Initializes the iterator to the start of the given list. The iterator's current pointer will point to the head of the list. A pointer to the current node is returned. */
+/* Initializes the iterator to the start of the given list. The iterator's 
+current pointer will point to the head of the list. A pointer to the 
+current node is returned. */
 list_node_t *
 ght_iter_init( list_t *list, list_iter_t *iter );
 
-/* Advances the iterator to the next node and returns a pointer to the current node. */
+/* Advances the iterator to the next node and returns a pointer to 
+the current node. */
 list_node_t *
 ght_iter_next( list_iter_t *iter );
 
-#define MAP_ARR_SIZE 257
+/* ####################### MAPS ########################## */
 
+/* Pre-defined, prime map bucket array sizes */
+#define MAP_SIZE_SM 17
+#define MAP_SIZE_MD 83 
+#define MAP_SIZE_LG 257
+
+/* Macro for calculating the hash bucket index from the key */
+#define ght_map_hash_idx( MAP_PTR, KEY_PTR ) \
+	( (MAP_PTR)->key_hash( (KEY_PTR) ) % (MAP_PTR)->buckets_size )
+
+/* Map helper function for computing a key hash value */
 typedef int (*hash_fn)( void *key );
-typedef int (*comp_fn)( void *key, void *entry_key );
 
+/* Map helper function for comparing two keys. The function should
+return true if the two keys are equal. */
+typedef int (*equals_fn)( void *key, void *entry_key );
+
+/* Map helper function for creating a copy of a key in dynamic memory */
+typedef void * (*copy_fn)( void *key );
+
+/* Generic struct for storing a key-value pair map entry. The
+entry is intended to live in a linked list so it includes a
+list_node_t member */
 typedef struct map_entry_t {
 	void *key;
 	void *value;
 	list_node_t node;
 } map_entry_t;
 
+
+/* Struct containing top-level map elements */
 typedef struct map_t {
-	int size;
-	hash_fn hash;
-	comp_fn comp;
-	list_t *arr;
+	int buckets_size; /* the size of the hash bucket array */ 
+	list_t *buckets; /* the hash bucket array; each bucket
+		contains a list of map_entry_t structs */	
+	hash_fn key_hash; /* function for hashing keys */
+	equals_fn key_equals; /* function for testing if two keys are equal. */
+	copy_fn key_copy; /* function for copying keys */
 } map_t;
 
+/* Creates a new map with the given size and helper functions. 
+The buckets_size should be a prime number. */
 map_t *
-ght_map_create( hash_fn hash, comp_fn comp );
+ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_fn key_copy );
 
+/* Releases all memory associated with the map, including the
+map itself. The memory for stored keys is released but not
+the memory for the data elements. That must be done by the caller
+prior to calling this method. */
 void
 ght_map_free( map_t *map );
 
+/* Places a new entry into the map with the given key and value.
+The key is copied using the map copy_key function and its memory
+is managed by the map itself. The memory for the value must be
+managed by the caller. If an entry already exists for the key,
+the value is updated and the old value is returned. If no entry
+exists, then NULL is returned. */
 void *
 ght_map_put( map_t *map, void *key, void *value );
 
+/* Returns the value stored with the given key or NULL if
+it does not exist. */
 void *
 ght_map_get( map_t *map, void *key );
 
+/* Returns the entire map entry stored with the given key or
+NULL if it does not exist. */
 map_entry_t *
 ght_map_get_entry( map_t *map, void *key );
 
+/* Removes the map entry with the given key, returning its
+value. Returns NULL if the entry cannot be found. The memory
+for the map_entry_t and key is freed. The memory for the value
+must be freed by the caller. */
 void *
 ght_map_remove( map_t *map, void *key );
+
+/* C string hashing function. */
+int
+ght_strmap_key_hash( void *key );
+
+/* C string comparision function. */
+int
+ght_strmap_key_equals( void *key_a, void *key_b );
+
+/* C string copy function. */
+void *
+ght_strmap_key_copy( void * key );
+
+/* Creates a map where the keys are interpreted as C strings. */
+map_t *
+ght_strmap_create( int buckets_size );
+
+/* xcb_window_t hashing function. This just returns the key as an int. */
+int
+ght_winmap_key_hash( void *key );
+
+/* xcb_window_t equals function. */
+int
+ght_winmap_key_equals( void *key_a, void *key_b );
+
+/* xcb_window_t copy function. */
+void *
+ght_winmap_key_copy( void *key );
+
+/* Creates a map where the keys are interpreted as xcb_window_t. */
+map_t *
+ght_winmap_create( int buckets_size );
 
 #endif

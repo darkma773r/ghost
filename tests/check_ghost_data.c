@@ -271,51 +271,63 @@ START_TEST( test_remove_ght_mod_for_each ) {
 }
 END_TEST
 
-int
-test_hash( void *key ){
-	char *char_key = (char *) key;
-	int hc = 17;
-	while ( *char_key){
-		hc += *(char_key++);
-	}
-	return hc;
-}
-
-int
-test_comp( void *key, void *test_key ){
-	return strcmp( (char *) key, (char *) test_key ) == 0;
-}
-
 START_TEST( test_ght_map_put_and_get ){
 	/* arrange */
-	map_t *map = ght_map_create( test_hash, test_comp );
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
 
 	/* keys */
 	char *apple = "apple",
-		*cat = "cat",
-		*dog = "dog",
-		*zebra = "zebra";
+		*cat = "cat";
 
 	int a = 1, 
-	    b = 2,
-	    c = 3,
-	    d = 4;
+	    b = 2;
 
 	/* act/assert */
 	ck_assert( ght_map_get( map, apple ) == NULL );
 	ck_assert( ght_map_get( map, cat ) == NULL );
-	ck_assert( ght_map_get( map, dog ) == NULL );
-	ck_assert( ght_map_get( map, zebra ) == NULL );
 
 	ght_map_put( map, apple, &a );
 	ght_map_put( map, cat, &b );
-	ght_map_put( map, dog, &c );
-	ght_map_put( map, zebra, &d );
 
 	ck_assert( ght_map_get( map, apple ) == &a );
 	ck_assert( ght_map_get( map, cat ) == &b );
-	ck_assert( ght_map_get( map, dog ) == &c );
-	ck_assert( ght_map_get( map, zebra ) == &d );
+
+	ck_assert( ght_map_get( map, "fake" ) == NULL );
+}
+END_TEST
+
+START_TEST( test_ght_map_put_replaces_other_value ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	char *apple = "apple";
+	int a = 1, b = 2;
+
+	/* act/assert */
+	ck_assert( ght_map_put( map, apple, &a ) == NULL );	
+	ck_assert( ght_map_put( map, apple, &b ) == &a );
+	ck_assert( ght_map_get( map, apple ) == &b );
+}
+END_TEST
+
+START_TEST( test_ght_map_put_copies_key ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_LG );
+
+	char apple[] = "apple", *other_apple;
+
+	other_apple = (char *) checked_malloc( strlen( apple ) + 1);
+	strcpy( other_apple, apple );
+
+	int a = 1;
+
+	/* act */
+	ght_map_put( map, apple, &a );
+
+	/* assert */
+	apple[0] = 'i';
+	ck_assert( ght_map_get( map, apple ) == NULL );	
+	ck_assert( ght_map_get( map, other_apple ) == &a );
 }
 END_TEST
 
@@ -323,23 +335,33 @@ END_TEST
 Suite *
 ghost_data_suite(){
 	Suite *suite;
-	TCase *tc_core;
+	TCase *tc_list, *tc_map;
 
 	suite = suite_create( "ghost_data" );
 	
-	/* buid the core test case */
-	tc_core = tcase_create( "Core" );
+	/* buid the list test case */
+	tc_list = tcase_create( "List" );
 
 	/* add individual tests */
-	tcase_add_test( tc_core, test_create_list );
-	tcase_add_test( tc_core, test_ght_push );
-	tcase_add_test( tc_core, test_ght_remove );
-	tcase_add_test( tc_core, test_ght_remove_all );
-	tcase_add_test( tc_core, test_ght_mod_for_each );
-	tcase_add_test( tc_core, test_remove_ght_mod_for_each );
-	tcase_add_test( tc_core, test_ght_map_put_and_get );
+	tcase_add_test( tc_list, test_create_list );
+	tcase_add_test( tc_list, test_ght_push );
+	tcase_add_test( tc_list, test_ght_remove );
+	tcase_add_test( tc_list, test_ght_remove_all );
+	tcase_add_test( tc_list, test_ght_mod_for_each );
+	tcase_add_test( tc_list, test_remove_ght_mod_for_each );
 
-	suite_add_tcase( suite, tc_core );
+	suite_add_tcase( suite, tc_list );
+
+	/* build the map test_case */
+	tc_map = tcase_create( "Map" );
+
+	/* add individual tests */
+	tcase_add_test( tc_map, test_ght_map_put_and_get );
+	tcase_add_test( tc_map, test_ght_map_put_replaces_other_value );
+	tcase_add_test( tc_map, test_ght_map_put_copies_key );
+	
+	suite_add_tcase( suite, tc_map );
+
 
 	return suite;
 }
