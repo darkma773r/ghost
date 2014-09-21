@@ -107,6 +107,21 @@ ght_iter_next( list_iter_t *iter );
 #define ght_map_hash_idx( MAP_PTR, KEY_PTR ) \
 	( (MAP_PTR)->key_hash( (KEY_PTR) ) % (MAP_PTR)->buckets_size )
 
+/* Macro for iterating over the map_entry_t elements in a map. */
+#define ght_map_for_each_entry( MAP_PTR, ITER_PTR, ENTRY_PTR_VAR ) \
+	for ( ENTRY_PTR_VAR = ght_map_iter_init( (MAP_PTR), (ITER_PTR) ); \
+		ENTRY_PTR_VAR != NULL; \
+		ENTRY_PTR_VAR = ght_map_iter_next( (ITER_PTR ) ))
+		
+/* macro for iterating over the values in a map. Note that the values may be null. */
+#define ght_map_for_each( MAP_PTR, ITER_PTR, VALUE_PTR_VAR, VALUE_PTR_TYPE ) \
+	for ( ght_map_iter_init( (MAP_PTR), (ITER_PTR) ), \
+		VALUE_PTR_VAR = (ITER_PTR)->current != NULL ? (VALUE_PTR_TYPE)((ITER_PTR)->current->value) : NULL; \
+		(ITER_PTR)->current != NULL; \
+		ght_map_iter_next( (ITER_PTR ) ), \
+		VALUE_PTR_VAR = (ITER_PTR)->current != NULL ? (VALUE_PTR_TYPE)((ITER_PTR)->current->value) : NULL )
+	
+
 /* Map helper function for computing a key hash value */
 typedef int (*hash_fn)( void *key );
 
@@ -138,6 +153,14 @@ typedef struct map_t {
 	equals_fn key_equals; /* function for testing if two keys are equal. */
 	copy_fn key_copy; /* function for copying keys */
 } map_t;
+
+/* Struct for iterating over a map */
+typedef struct map_iter_t {
+	map_t *map; /* the map being iterated over */
+	int bucket_idx; /* the index of the bucket we're on */	
+	map_entry_t *current; /* the current entry */
+	list_iter_t list_iter; /* the current list iterator */
+} map_iter_t;
 
 /* Creates a new map with the given size and helper functions. 
 The buckets_size should be a prime number. */
@@ -176,6 +199,16 @@ for the map_entry_t and key is freed. The memory for the value
 must be freed by the caller. */
 void *
 ght_map_remove( map_t *map, void *key );
+
+/* Initializes the given map iterator and returns a pointer to 
+the first available map_entry_t. */
+map_entry_t *
+ght_map_iter_init( map_t *map, map_iter_t *iter );
+
+/* Moves the map iterator to the next available map_entry_t and
+returns a pointer to it. */ 
+map_entry_t *
+ght_map_iter_next( map_iter_t *iter );
 
 /* C string hashing function. */
 int

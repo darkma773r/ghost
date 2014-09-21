@@ -198,6 +198,55 @@ ght_map_remove( map_t *map, void *key ){
 	return NULL;
 }
 
+map_entry_t *
+ght_map_iter_init( map_t *map, map_iter_t *iter ){
+	/* remember the map we're using */
+	iter->map = map;
+
+	/* position the index before the first bucket */
+	iter->bucket_idx = -1;
+
+	/* clear the current entry */
+	iter->current = NULL;
+
+	/* zero out the current list iterator */
+	iter->list_iter.next = NULL;
+	iter->list_iter.current = NULL;
+
+	/* get the next available entry */
+	return ght_map_iter_next( iter ); 
+}
+
+map_entry_t *
+ght_map_iter_next( map_iter_t *iter ){
+	/* try to stay on the same list and just advance one */
+	list_node_t *list_node  = ght_iter_next( &(iter->list_iter) );
+
+	if ( list_node == NULL ){
+		/* nothing in the current list, try other buckets */
+		iter->bucket_idx++;
+		for (;iter->bucket_idx < iter->map->buckets_size; 
+			iter->bucket_idx++){
+
+			list_node = ght_iter_init( 
+				&(iter->map->buckets[iter->bucket_idx]),
+				&(iter->list_iter) );	
+			if ( list_node != NULL ){
+				break;
+			}
+		}
+	}
+	
+	if ( list_node != NULL ){	
+		iter->current = container_of( list_node, map_entry_t, node );
+	} else {
+		iter->current = NULL;
+	}
+
+	return iter->current;
+}
+
+
 /* Map<char[], void *> */
 
 int

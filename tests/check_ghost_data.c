@@ -523,7 +523,182 @@ START_TEST( test_ght_winmap_key_copy ){
 END_TEST
 
 
+START_TEST( test_ght_map_for_each_entry ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_LG );
 
+	int a = 1,
+	    b = 2,
+	    c = 3,
+	    d = 4,
+	    counter = 0;
+	
+	ght_map_put( map, "a", &a );
+	ght_map_put( map, "b", &b );
+	ght_map_put( map, "c", &c );
+	ght_map_put( map, "d", &d );
+
+	/* act */
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		fprintf( stderr, "bucket_idx: %d, key: %s, value: %d\n",
+			iter.bucket_idx, (char *) entry->key, *(int *)entry->value ); 
+		counter += *((int *) entry->value);
+	}		
+
+	ck_assert_int_eq( 10, counter );	
+}
+END_TEST
+
+START_TEST( test_ght_map_for_each_entry_removed_entries ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	int a = 1,
+	    b = 2,
+	    c = 3,
+	    d = 4,
+	    counter = 0;
+	
+	ght_map_put( map, "a", &a );
+	ght_map_put( map, "b", &b );
+	ght_map_put( map, "c", &c );
+	ght_map_put( map, "d", &d );
+
+	ght_map_remove( map, "a" );
+	ght_map_remove( map, "c" );
+	ght_map_remove( map, "d" );
+
+	/* act */
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		printf( "bucket_idx: %d, key: %s, value: %d\n",
+			iter.bucket_idx, (char *) entry->key, *(int *)entry->value ); 
+		counter += *(int *) entry->value;
+	}		
+
+	ck_assert_int_eq( 2, counter );	
+}
+END_TEST
+
+START_TEST( test_ght_map_for_each_entry_empty ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+	int counter = 0;
+
+	/* act */
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		printf( "bucket_idx: %d, key: %s, value: %d\n",
+			iter.bucket_idx, (char *) entry->key, *(int *)entry->value ); 
+		counter++;
+	}		
+
+	ck_assert_int_eq( 0, counter );	
+}
+END_TEST
+
+
+START_TEST( test_ght_map_for_each ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_LG );
+
+	int a = 1,
+	    b = 2,
+	    c = 3,
+	    d = 4,
+	    counter = 0;
+	
+	ght_map_put( map, "a", &a );
+	ght_map_put( map, "b", &b );
+	ght_map_put( map, "c", &c );
+	ght_map_put( map, "d", &d );
+
+	/* act */
+	map_iter_t iter;
+	int *value;
+	ght_map_for_each( map, &iter, value, int * ){
+		printf( "bucket_idx: %d, value: %d\n",
+			iter.bucket_idx, *value ); 
+
+		counter += *value;
+	}		
+
+	ck_assert_int_eq( 10, counter );	
+}
+END_TEST
+
+START_TEST( test_ght_map_for_each_removed_entries ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	int a = 1,
+	    b = 2,
+	    c = 3,
+	    d = 4,
+	    counter = 0;
+	
+	ght_map_put( map, "a", &a );
+	ght_map_put( map, "b", &b );
+	ght_map_put( map, "c", &c );
+	ght_map_put( map, "d", &d );
+
+	ght_map_remove( map, "a" );
+	ght_map_remove( map, "c" );
+	ght_map_remove( map, "d" );
+
+	/* act */
+	map_iter_t iter;
+	int *value;
+	ght_map_for_each( map, &iter, value, int * ){
+		printf( "bucket_idx: %d, value: %d\n",
+			iter.bucket_idx, *value ); 
+		counter += *value; 
+	}		
+
+	ck_assert_int_eq( 2, counter );	
+}
+END_TEST
+
+START_TEST( test_ght_map_for_each_empty ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+	int counter = 0;
+
+	/* act */
+	map_iter_t iter;
+	int *value;
+	ght_map_for_each( map, &iter, value, int * ){
+		printf( "bucket_idx: %d, value: %d\n",
+			iter.bucket_idx, *value ); 
+		counter++;
+	}		
+
+	ck_assert_int_eq( 0, counter );	
+}
+END_TEST
+
+START_TEST( test_ght_map_for_each_nulls ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+	int counter = 0;
+
+	ght_map_put( map, "a", NULL );
+	ght_map_put( map, "b", NULL );
+
+	/* act */
+	map_iter_t iter;
+	int *value;
+	ght_map_for_each( map, &iter, value, int * ){
+		counter++;
+	}		
+
+	ck_assert_int_eq( 2, counter );	
+}
+END_TEST
 /* ##################### TEST SETUP ################### */
 
 Suite *
@@ -563,7 +738,16 @@ ghost_data_suite(){
 	tcase_add_test( tc_map, test_ght_winmap_key_hash );
 	tcase_add_test( tc_map, test_ght_winmap_key_equals );
 	tcase_add_test( tc_map, test_ght_winmap_key_copy );
+
+	tcase_add_test( tc_map, test_ght_map_for_each_entry );
+	tcase_add_test( tc_map, test_ght_map_for_each_entry_removed_entries );
+	tcase_add_test( tc_map, test_ght_map_for_each_entry_empty );
 	
+	tcase_add_test( tc_map, test_ght_map_for_each );
+	tcase_add_test( tc_map, test_ght_map_for_each_removed_entries );
+	tcase_add_test( tc_map, test_ght_map_for_each_empty );
+	tcase_add_test( tc_map, test_ght_map_for_each_nulls );
+
 	suite_add_tcase( suite, tc_map );
 
 
