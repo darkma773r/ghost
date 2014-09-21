@@ -7,6 +7,8 @@
 #include <check.h>
 #include "../src/ghost_data.h"
 
+/* ################## LISTS ################# */
+
 static const list_t EMPTY_LIST = { NULL };
 
 typedef struct test_t {
@@ -271,6 +273,8 @@ START_TEST( test_remove_ght_mod_for_each ) {
 }
 END_TEST
 
+/* ################### MAPS ###################### */
+
 START_TEST( test_ght_map_put_and_get ){
 	/* arrange */
 	map_t *map = ght_strmap_create( MAP_SIZE_SM );
@@ -283,16 +287,25 @@ START_TEST( test_ght_map_put_and_get ){
 	    b = 2;
 
 	/* act/assert */
+
+	/* check that the items aren't found */
 	ck_assert( ght_map_get( map, apple ) == NULL );
 	ck_assert( ght_map_get( map, cat ) == NULL );
 
+	/* add them */
 	ght_map_put( map, apple, &a );
 	ght_map_put( map, cat, &b );
 
+	/* make sure they're found now */
 	ck_assert( ght_map_get( map, apple ) == &a );
 	ck_assert( ght_map_get( map, cat ) == &b );
 
+	/* ensure that a fake key is still not found */
 	ck_assert( ght_map_get( map, "fake" ) == NULL );
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -304,9 +317,22 @@ START_TEST( test_ght_map_put_replaces_other_value ){
 	int a = 1, b = 2;
 
 	/* act/assert */
+
+	/* add the first item */
 	ck_assert( ght_map_put( map, apple, &a ) == NULL );	
+	map_entry_t *orig_entry = ght_map_get_entry( map, apple );
+
+	/* add the second item under the same key. This should return
+	the original, replaced value. */
 	ck_assert( ght_map_put( map, apple, &b ) == &a );
 	ck_assert( ght_map_get( map, apple ) == &b );
+
+	/* make sure that the entry is the same as the previous one */ 
+	map_entry_t *new_entry = ght_map_get_entry( map, apple );	
+	ck_assert( orig_entry == new_entry );
+
+	/* clean up */
+	ght_map_free( map );
 }
 END_TEST
 
@@ -314,23 +340,78 @@ START_TEST( test_ght_map_put_copies_key ){
 	/* arrange */
 	map_t *map = ght_strmap_create( MAP_SIZE_LG );
 
-	char apple[] = "apple", *other_apple;
-
-	other_apple = (char *) checked_malloc( strlen( apple ) + 1);
-	strcpy( other_apple, apple );
-
+	char apple[] = "apple";
 	int a = 1;
 
 	/* act */
 	ght_map_put( map, apple, &a );
 
 	/* assert */
-	apple[0] = 'i';
-	ck_assert( ght_map_get( map, apple ) == NULL );	
-	ck_assert( ght_map_get( map, other_apple ) == &a );
+	map_entry_t *entry = ght_map_get_entry( map, apple );
+	ck_assert( entry->key != apple );
+
+	/* clean up */
+	ght_map_free( map );
 }
 END_TEST
 
+START_TEST( test_ght_map_get_entry ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_MD );
+
+	char apple[] = "apple";
+	char a = 1;
+
+	ght_map_put( map, apple, &a );
+
+	/* act */
+	map_entry_t *good = ght_map_get_entry( map, apple );
+	map_entry_t *bad = ght_map_get_entry( map, "fake" );
+
+	/* assert */
+	ck_assert( good != NULL );
+	ck_assert( strcmp( good->key, apple ) == 0 );
+	ck_assert( good->value == &a );
+
+	ck_assert( bad == NULL );
+
+	/* clean up */
+	ght_map_free( map );
+}
+END_TEST
+
+START_TEST( test_ght_map_remove ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	char apple[] = "apple";
+	char a = 1;
+
+	ght_map_put( map, apple, &a );
+
+	/* act */
+	void *result = ght_map_remove( map, apple );
+
+	/* assert */
+	ck_assert( result == &a );
+	ck_assert( ght_map_get( map, apple ) == NULL );
+}
+END_TEST
+
+START_TEST( test_ght_map_remove_not_found ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	/* act */
+	void *result = ght_map_remove( map, "not found" );
+
+	/* assert */
+	ck_assert( result == NULL );
+}
+END_TEST
+
+
+/* ##################### TEST SETUP ################### */
 
 Suite *
 ghost_data_suite(){
@@ -359,6 +440,9 @@ ghost_data_suite(){
 	tcase_add_test( tc_map, test_ght_map_put_and_get );
 	tcase_add_test( tc_map, test_ght_map_put_replaces_other_value );
 	tcase_add_test( tc_map, test_ght_map_put_copies_key );
+	tcase_add_test( tc_map, test_ght_map_get_entry );
+	tcase_add_test( tc_map, test_ght_map_remove );
+	tcase_add_test( tc_map, test_ght_map_remove_not_found );
 	
 	suite_add_tcase( suite, tc_map );
 

@@ -72,6 +72,33 @@ ght_iter_next( list_iter_t *iter ) {
 
 /* ########################## MAPS ###################### */
 
+/* Helper function for creating a map_entry_t element. */
+static map_entry_t * 
+ght_map_create_entry( map_t *map, void *key, void *value ){
+	map_entry_t *entry = (map_entry_t *) checked_malloc( sizeof( map_entry_t ));
+	
+	/* The key_copy function is expected to allocate dynamic memory for the
+	key. This will be freed later in ght_map_free_entry. */
+	entry->key = map->key_copy( key );
+
+	/* The value is expected to be freed by the caller. */
+	entry->value = value;
+
+	return entry;
+}
+
+/* Helper function for releasing map_entry_t memory. The caller is responsible
+for freeing any memory associated with the entry value. */
+static void
+ght_map_free_entry( map_entry_t *entry ){
+	/* free the key */
+	free( entry->key );
+
+	/* free the rest of the struct */
+	free( entry );
+}
+
+
 map_t *
 ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_fn key_copy ){
 	/* allocate and zero the map */
@@ -117,11 +144,7 @@ ght_map_put( map_t *map, void *key, void *value ){
 	}
 
 	/* no existing entry :-( I guess we'll need to make a new one. */
-	entry = (map_entry_t *) checked_malloc( sizeof( map_entry_t ));
-	
-	/* store a copy of the key and not the original */
-	entry->key = map->key_copy( key );
-	entry->value = value;
+	entry = ght_map_create_entry( map, key, value );
 
 	ght_push( &(map->buckets[idx]), entry ); 
 
@@ -143,6 +166,34 @@ ght_map_get_entry( map_t *map, void *key ){
 	ght_for_each( &(map->buckets[idx]), entry, map_entry_t ){
 		if ( map->key_equals( key, entry->key )){
 			return entry;
+		}
+	}	
+	return NULL;
+}
+
+void *
+ght_map_remove( map_t *map, void *key ){
+	int idx = ght_map_hash_idx( map, key );
+
+	map_entry_t *entry;
+	void *value;
+
+	list_iter_t iter;
+	list_t *list = &(map->buckets[idx]);
+
+	ght_mod_for_each( list, &iter, entry, map_entry_t ){
+		if ( map->key_equals( key, entry->key )){
+			/* this is the one we need to delete */
+			value = entry->value;
+
+			/* remove the node from the list */
+			ght_remove( list, entry );
+
+			/* free the entry */
+			ght_map_free_entry( entry );
+
+			/* return the removed value */
+			return value;
 		}
 	}	
 	return NULL;

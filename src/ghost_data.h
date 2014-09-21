@@ -114,7 +114,9 @@ typedef int (*hash_fn)( void *key );
 return true if the two keys are equal. */
 typedef int (*equals_fn)( void *key, void *entry_key );
 
-/* Map helper function for creating a copy of a key in dynamic memory */
+/* Map helper function for creating a copy of a key in dynamic memory. The
+memory for the key must be able to be freed with a single call to free().
+The releasing of this memory is handled internally by the map functions. */
 typedef void * (*copy_fn)( void *key );
 
 /* Generic struct for storing a key-value pair map entry. The
