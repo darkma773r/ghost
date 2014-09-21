@@ -98,7 +98,6 @@ ght_map_free_entry( map_entry_t *entry ){
 	free( entry );
 }
 
-
 map_t *
 ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_fn key_copy ){
 	/* allocate and zero the map */
@@ -203,10 +202,13 @@ ght_map_remove( map_t *map, void *key ){
 
 int
 ght_strmap_key_hash( void *key ){
+	/* Using the djb2 hash algorithm here. Thank you, Daniel J Bernstein! */ 
 	char *char_key = (char *) key;
-	int hash = 17;
-	while ( char_key ){
-		hash = ( hash << 1 ) ^ *(char_key++);
+	
+	int hash = 5381, c;
+	while ( c = *char_key++ ){
+		hash = (( hash << 5 ) + hash ) + c;
+			/* this is equivalent to hash * 33 + c */
 	}
 	return hash;
 }

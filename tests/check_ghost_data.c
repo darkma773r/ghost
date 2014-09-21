@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <check.h>
 #include "../src/ghost_data.h"
 
@@ -395,6 +396,10 @@ START_TEST( test_ght_map_remove ){
 	/* assert */
 	ck_assert( result == &a );
 	ck_assert( ght_map_get( map, apple ) == NULL );
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -407,8 +412,116 @@ START_TEST( test_ght_map_remove_not_found ){
 
 	/* assert */
 	ck_assert( result == NULL );
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
+
+START_TEST( test_ght_strmap_key_hash ){
+	/* arrange */
+	char empty[] = "";
+	char cat[] = "cat";
+	char tac[] = "tac";
+	char catcat[] = "catcat";
+	char long_str_a[] = "This is a really long string to use in testing.";
+	char long_str_b[] = "Hi. This is a really long string to use in testing.";
+
+	/* act/assert */
+	ck_assert_int_ne( ght_strmap_key_hash( empty ),
+		ght_strmap_key_hash( cat ));
+	ck_assert_int_ne( ght_strmap_key_hash( cat ),
+		ght_strmap_key_hash( tac ));	
+	ck_assert_int_ne( ght_strmap_key_hash( cat ),
+		ght_strmap_key_hash( catcat ));	
+	ck_assert_int_ne( ght_strmap_key_hash( long_str_a ),
+		ght_strmap_key_hash( long_str_b ));	
+
+}
+END_TEST
+
+START_TEST( test_ght_strmap_key_equals ){
+	/* act/assert */
+	ck_assert( ght_strmap_key_equals( "", "" ));
+	ck_assert( ght_strmap_key_equals( "abc", "abc" ));
+	ck_assert( !ght_strmap_key_equals( "abc", "def" ));
+}
+END_TEST
+
+START_TEST( test_ght_strmap_key_copy ){
+	/* arrange */
+	char str[] = "string";
+
+	/* act */
+	char *copy = ght_strmap_key_copy( str );
+
+	/* assert */
+	ck_assert( strcmp( str, copy ) == 0 );
+	ck_assert( str != copy );
+
+	/* clean up */
+	free( copy );
+}
+END_TEST
+
+START_TEST( test_ght_winmap ){
+	/* arrange */
+	map_t *map = ght_winmap_create( MAP_SIZE_LG );
+
+	xcb_window_t key = 21;
+	int a = 1;
+
+	ght_map_put( map, &key, &a );
+
+	/* act/assert */
+	ck_assert( ght_map_get( map, &key ) == &a );
+	ck_assert( ght_map_remove( map, &key ) == &a );
+	ck_assert( ght_map_get( map, &key ) == NULL );	
+
+	/* clean up */
+	ght_map_free( map );
+}
+END_TEST
+
+START_TEST( test_ght_winmap_key_hash ){
+	/* arrange */
+	xcb_window_t a = 12;
+	xcb_window_t b = 23;
+
+	/* act/assert */
+	ck_assert( ght_winmap_key_hash( &a ) != ght_winmap_key_hash( &b )); 
+}
+END_TEST
+
+START_TEST( test_ght_winmap_key_equals ){
+	/* arrange */
+	xcb_window_t a = 12;
+	xcb_window_t b = 12;
+	xcb_window_t c = 23;
+
+	/* act/assert */
+	ck_assert( ght_winmap_key_equals( &a, &b ));
+	ck_assert( !ght_winmap_key_equals( &a, &c ));
+}
+END_TEST
+
+START_TEST( test_ght_winmap_key_copy ){
+	/* arrange */
+	xcb_window_t a = 12;
+
+	/* act */
+	xcb_window_t *copy = ght_winmap_key_copy( &a );
+
+	/* assert */
+	ck_assert( a == *copy );
+	ck_assert( &a != copy );
+	
+	/* clean up */
+	free( copy );
+}
+END_TEST
+
 
 
 /* ##################### TEST SETUP ################### */
@@ -443,6 +556,13 @@ ghost_data_suite(){
 	tcase_add_test( tc_map, test_ght_map_get_entry );
 	tcase_add_test( tc_map, test_ght_map_remove );
 	tcase_add_test( tc_map, test_ght_map_remove_not_found );
+	tcase_add_test( tc_map, test_ght_strmap_key_hash );	
+	tcase_add_test( tc_map, test_ght_strmap_key_equals );
+	tcase_add_test( tc_map, test_ght_strmap_key_copy );
+	tcase_add_test( tc_map, test_ght_winmap );
+	tcase_add_test( tc_map, test_ght_winmap_key_hash );
+	tcase_add_test( tc_map, test_ght_winmap_key_equals );
+	tcase_add_test( tc_map, test_ght_winmap_key_copy );
 	
 	suite_add_tcase( suite, tc_map );
 
