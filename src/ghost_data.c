@@ -120,8 +120,17 @@ ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_f
 
 void
 ght_map_free( map_t *map ){
-	/* TODO: release the memory for keys here */
+	/* release the memory for each entry  */
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		ght_map_remove_entry( map, entry ); 
+	}
+	
+	/* free all of the bucket lists */
 	free( map->buckets );
+
+	/* free the map itself */
 	free( map );
 }
 

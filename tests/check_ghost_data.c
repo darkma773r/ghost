@@ -415,10 +415,13 @@ START_TEST( test_ght_map_remove_entry ){
 
 	/* act */
 	void *result = ght_map_remove_entry( map, entry );
+	void *null_result = ght_map_remove_entry( map, NULL );
 
 	/* assert */
 	ck_assert( result == &a );
 	ck_assert( ght_map_get( map, apple ) == NULL );
+
+	ck_assert( null_result == NULL );
 
 	/* clean up */
 	ght_map_free( map );
