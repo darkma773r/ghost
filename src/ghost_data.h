@@ -200,6 +200,12 @@ must be freed by the caller. */
 void *
 ght_map_remove( map_t *map, void *key );
 
+/* Removes the given map entry from the map. The memory for the
+map entry and key is freed but the memory for the entry value
+must be freed by the caller. */
+void *
+ght_map_remove_entry( map_t *map, map_entry_t *entry ); 
+
 /* Initializes the given map iterator and returns a pointer to 
 the first available map_entry_t. */
 map_entry_t *

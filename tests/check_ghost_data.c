@@ -403,6 +403,28 @@ START_TEST( test_ght_map_remove ){
 }
 END_TEST
 
+START_TEST( test_ght_map_remove_entry ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+	char apple[] = "apple";
+	char a = 1;
+
+	ght_map_put( map, apple, &a );
+	map_entry_t *entry = ght_map_get_entry( map, apple );
+
+	/* act */
+	void *result = ght_map_remove_entry( map, entry );
+
+	/* assert */
+	ck_assert( result == &a );
+	ck_assert( ght_map_get( map, apple ) == NULL );
+
+	/* clean up */
+	ght_map_free( map );
+}
+END_TEST
+
 START_TEST( test_ght_map_remove_not_found ){
 	/* arrange */
 	map_t *map = ght_strmap_create( MAP_SIZE_SM );
@@ -548,6 +570,10 @@ START_TEST( test_ght_map_for_each_entry ){
 	}		
 
 	ck_assert_int_eq( 10, counter );	
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -580,6 +606,9 @@ START_TEST( test_ght_map_for_each_entry_removed_entries ){
 	}		
 
 	ck_assert_int_eq( 2, counter );	
+
+	/* clean up */
+	ght_map_free( map );
 }
 END_TEST
 
@@ -598,8 +627,49 @@ START_TEST( test_ght_map_for_each_entry_empty ){
 	}		
 
 	ck_assert_int_eq( 0, counter );	
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
+
+START_TEST( test_ght_map_for_each_entry_iterate_and_remove ){
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_MD );
+
+	int a = 1,
+	    b = 2,
+	    counter = 0;
+	
+
+	ght_map_put( map, "a", &a );
+	ght_map_put( map, "b", &b );
+
+	/* act */		
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		ght_map_remove_entry( map, entry );
+		counter++;
+	} 
+
+	ck_assert_int_eq( 2, counter ); 	
+
+	/* make sure that there's nothing left in the map */
+	counter = 0;
+	ght_map_for_each_entry( map, &iter, entry ){
+		counter++;
+	}
+
+	ck_assert_int_eq( 0, counter );
+
+	/* clean up */
+	ght_map_free( map );
+
+}
+END_TEST
+
 
 
 START_TEST( test_ght_map_for_each ){
@@ -628,6 +698,10 @@ START_TEST( test_ght_map_for_each ){
 	}		
 
 	ck_assert_int_eq( 10, counter );	
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -660,6 +734,10 @@ START_TEST( test_ght_map_for_each_removed_entries ){
 	}		
 
 	ck_assert_int_eq( 2, counter );	
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -678,6 +756,10 @@ START_TEST( test_ght_map_for_each_empty ){
 	}		
 
 	ck_assert_int_eq( 0, counter );	
+
+	/* clean up */
+	ght_map_free( map );
+
 }
 END_TEST
 
@@ -696,9 +778,14 @@ START_TEST( test_ght_map_for_each_nulls ){
 		counter++;
 	}		
 
-	ck_assert_int_eq( 2, counter );	
+	ck_assert_int_eq( 2, counter );
+
+	/* clean up */
+	ght_map_free( map );
+	
 }
 END_TEST
+
 /* ##################### TEST SETUP ################### */
 
 Suite *
@@ -729,6 +816,7 @@ ghost_data_suite(){
 	tcase_add_test( tc_map, test_ght_map_put_replaces_other_value );
 	tcase_add_test( tc_map, test_ght_map_put_copies_key );
 	tcase_add_test( tc_map, test_ght_map_get_entry );
+	tcase_add_test( tc_map, test_ght_map_remove_entry );
 	tcase_add_test( tc_map, test_ght_map_remove );
 	tcase_add_test( tc_map, test_ght_map_remove_not_found );
 	tcase_add_test( tc_map, test_ght_strmap_key_hash );	
@@ -741,6 +829,7 @@ ghost_data_suite(){
 
 	tcase_add_test( tc_map, test_ght_map_for_each_entry );
 	tcase_add_test( tc_map, test_ght_map_for_each_entry_removed_entries );
+	tcase_add_test( tc_map, test_ght_map_for_each_entry_iterate_and_remove );
 	tcase_add_test( tc_map, test_ght_map_for_each_entry_empty );
 	
 	tcase_add_test( tc_map, test_ght_map_for_each );

@@ -172,30 +172,29 @@ ght_map_get_entry( map_t *map, void *key ){
 
 void *
 ght_map_remove( map_t *map, void *key ){
-	int idx = ght_map_hash_idx( map, key );
+	return ght_map_remove_entry( map, ght_map_get_entry( map, key ));
+}
 
-	map_entry_t *entry;
-	void *value;
+void *
+ght_map_remove_entry( map_t *map, map_entry_t *entry ){
+	if ( entry == NULL ){
+		return NULL;
+	}
 
-	list_iter_t iter;
+	/* store the value to return later */
+	void *value = entry->value;
+
+	/* get the list containing this entry */
+	int idx = ght_map_hash_idx( map, entry->key );		
 	list_t *list = &(map->buckets[idx]);
 
-	ght_mod_for_each( list, &iter, entry, map_entry_t ){
-		if ( map->key_equals( key, entry->key )){
-			/* this is the one we need to delete */
-			value = entry->value;
+	/* remove the entry from the list */
+	ght_remove( list, entry );
 
-			/* remove the node from the list */
-			ght_remove( list, entry );
+	/* free the memory */
+	ght_map_free_entry( entry );	
 
-			/* free the entry */
-			ght_map_free_entry( entry );
-
-			/* return the removed value */
-			return value;
-		}
-	}	
-	return NULL;
+	return value;
 }
 
 map_entry_t *
