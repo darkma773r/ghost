@@ -24,7 +24,7 @@ checked_malloc( size_t size ){
 /* ####################### LISTS ###################### */
 
 void
-ght_push_node( list_t *list, list_node_t *node ){
+ght_list_push_node( list_t *list, list_node_t *node ){
 	if ( list->tail == NULL ){
 		/* the list is empty */
 		list->head = list->tail = node;
@@ -39,7 +39,7 @@ ght_push_node( list_t *list, list_node_t *node ){
 }
 
 void
-ght_remove_node( list_t *list, list_node_t *node ){
+ght_list_remove_node( list_t *list, list_node_t *node ){
 	if ( list->head == node ){
 		list->head = node->next;		
 	}
@@ -56,13 +56,13 @@ ght_remove_node( list_t *list, list_node_t *node ){
 }
 
 list_node_t *
-ght_iter_init( list_t *list, list_iter_t *iter ){
+ght_list_iter_init( list_t *list, list_iter_t *iter ){
 	iter->next = list->head;	
-	return ght_iter_next( iter );
+	return ght_list_iter_next( iter );
 }
 
 list_node_t *
-ght_iter_next( list_iter_t *iter ) {
+ght_list_iter_next( list_iter_t *iter ) {
 	iter->current = iter->next;
 	if ( iter->current != NULL ){
 		iter->next = iter->current->next;
@@ -141,7 +141,7 @@ ght_map_put( map_t *map, void *key, void *value ){
 	/* check if we have an entry for this already */
 	map_entry_t *entry;
 	void *old_value;
-	ght_for_each( &(map->buckets[idx]), entry, map_entry_t ){
+	ght_list_for_each( &(map->buckets[idx]), entry, map_entry_t ){
 		if ( map->key_equals( key, entry->key )){
 			/* we found an existing entry! replace
 			the value and return the old value. */
@@ -154,7 +154,7 @@ ght_map_put( map_t *map, void *key, void *value ){
 	/* no existing entry :-( I guess we'll need to make a new one. */
 	entry = ght_map_create_entry( map, key, value );
 
-	ght_push( &(map->buckets[idx]), entry ); 
+	ght_list_push( &(map->buckets[idx]), entry ); 
 
 	return NULL; /* return NULL to signal that we didn't replace an
 		existing entry */
@@ -171,7 +171,7 @@ ght_map_get_entry( map_t *map, void *key ){
 	int idx = ght_map_hash_idx( map, key );
 
 	map_entry_t *entry;
-	ght_for_each( &(map->buckets[idx]), entry, map_entry_t ){
+	ght_list_for_each( &(map->buckets[idx]), entry, map_entry_t ){
 		if ( map->key_equals( key, entry->key )){
 			return entry;
 		}
@@ -198,7 +198,7 @@ ght_map_remove_entry( map_t *map, map_entry_t *entry ){
 	list_t *list = &(map->buckets[idx]);
 
 	/* remove the entry from the list */
-	ght_remove( list, entry );
+	ght_list_remove( list, entry );
 
 	/* free the memory */
 	ght_map_free_entry( entry );	
@@ -228,7 +228,7 @@ ght_map_iter_init( map_t *map, map_iter_t *iter ){
 map_entry_t *
 ght_map_iter_next( map_iter_t *iter ){
 	/* try to stay on the same list and just advance one */
-	list_node_t *list_node  = ght_iter_next( &(iter->list_iter) );
+	list_node_t *list_node  = ght_list_iter_next( &(iter->list_iter) );
 
 	if ( list_node == NULL ){
 		/* nothing in the current list, try other buckets */
@@ -236,7 +236,7 @@ ght_map_iter_next( map_iter_t *iter ){
 		for (;iter->bucket_idx < iter->map->buckets_size; 
 			iter->bucket_idx++){
 
-			list_node = ght_iter_init( 
+			list_node = ght_list_iter_init( 
 				&(iter->map->buckets[iter->bucket_idx]),
 				&(iter->list_iter) );	
 			if ( list_node != NULL ){

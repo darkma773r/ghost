@@ -29,7 +29,7 @@ START_TEST( test_create_list ) {
 END_TEST
 
 
-START_TEST( test_ght_push ) {
+START_TEST( test_ght_list_push ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -47,9 +47,9 @@ START_TEST( test_ght_push ) {
 	};
 
 	/* act */
-	ght_push( &list, &first );
-	ght_push( &list, &second );
-	ght_push( &list, third );
+	ght_list_push( &list, &first );
+	ght_list_push( &list, &second );
+	ght_list_push( &list, third );
 	
 	/* assert */
 	ck_assert( &first.node == list.head );
@@ -61,10 +61,10 @@ START_TEST( test_ght_push ) {
 
 	/* run through the list once before the test to make sure
 	 we can iterate through it multiple times */
-	ght_for_each( &list, cur, test_t ){}
+	ght_list_for_each( &list, cur, test_t ){}
 
 	/* do the test */
-	ght_for_each( &list, cur, test_t ) {
+	ght_list_for_each( &list, cur, test_t ) {
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
 		i++;
@@ -77,7 +77,7 @@ START_TEST( test_ght_push ) {
 } 
 END_TEST
 
-START_TEST( test_ght_remove ) {
+START_TEST( test_ght_list_remove ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -94,13 +94,13 @@ START_TEST( test_ght_remove ) {
 		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
 	};
 
-	ght_push( &list, &first );
-	ght_push( &list, &second );
-	ght_push( &list, third );
+	ght_list_push( &list, &first );
+	ght_list_push( &list, &second );
+	ght_list_push( &list, third );
 
 	/* act */
-	ght_remove( &list, &first );
-	ght_remove( &list, third );
+	ght_list_remove( &list, &first );
+	ght_list_remove( &list, third );
 	
 	/* assert */
 	ck_assert( &second.node == list.head );
@@ -110,7 +110,7 @@ START_TEST( test_ght_remove ) {
 	double d = 3.1;
 	test_t *cur;
 
-	ght_for_each( &list, cur, test_t ) {
+	ght_list_for_each( &list, cur, test_t ) {
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
 		i++;
@@ -123,7 +123,7 @@ START_TEST( test_ght_remove ) {
 } 
 END_TEST
 
-START_TEST( test_ght_remove_all ) {
+START_TEST( test_ght_list_remove_all ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -140,14 +140,14 @@ START_TEST( test_ght_remove_all ) {
 		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
 	};
 
-	ght_push( &list, &first );
-	ght_push( &list, &second );
-	ght_push( &list, third );
+	ght_list_push( &list, &first );
+	ght_list_push( &list, &second );
+	ght_list_push( &list, third );
 
 	/* act */
-	ght_remove( &list, &second );
-	ght_remove( &list, &first );
-	ght_remove( &list, third );
+	ght_list_remove( &list, &second );
+	ght_list_remove( &list, &first );
+	ght_list_remove( &list, third );
 	
 	/* assert */
 	ck_assert( NULL == list.head );
@@ -156,7 +156,7 @@ START_TEST( test_ght_remove_all ) {
 	int i = 0;
 	test_t *cur;
 
-	ght_for_each( &list, cur, test_t ) {
+	ght_list_for_each( &list, cur, test_t ) {
 		i++;
 	} 	
 
@@ -166,7 +166,7 @@ START_TEST( test_ght_remove_all ) {
 } 
 END_TEST
 
-START_TEST( test_ght_mod_for_each ) {
+START_TEST( test_ght_list_mod_for_each ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -185,9 +185,9 @@ START_TEST( test_ght_mod_for_each ) {
 		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
 	};
 
-	ght_push( &list, first );
-	ght_push( &list, second );
-	ght_push( &list, third );
+	ght_list_push( &list, first );
+	ght_list_push( &list, second );
+	ght_list_push( &list, third );
 
 	/* act/assert */
 	test_t *cur;
@@ -196,10 +196,10 @@ START_TEST( test_ght_mod_for_each ) {
 	double d = 2.1;
 
 	/* run through the list once before the test to make sure we can iterate through it multiple times */
-	ght_mod_for_each( &list, &iter, cur, test_t ){}
+	ght_list_mod_for_each( &list, &iter, cur, test_t ){}
 
 	/* do the test */
-	ght_mod_for_each( &list, &iter, cur, test_t ){
+	ght_list_mod_for_each( &list, &iter, cur, test_t ){
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
 
@@ -216,7 +216,7 @@ START_TEST( test_ght_mod_for_each ) {
 END_TEST
 
 
-START_TEST( test_remove_ght_mod_for_each ) {
+START_TEST( test_remove_ght_list_mod_for_each ) {
 	/* arrange */
 	list_t list = EMPTY_LIST;
 
@@ -235,9 +235,9 @@ START_TEST( test_remove_ght_mod_for_each ) {
 		3, 4.1, { (list_node_t *) 1000, (list_node_t *) 29382 }
 	};
 
-	ght_push( &list, first );
-	ght_push( &list, second );
-	ght_push( &list, third );
+	ght_list_push( &list, first );
+	ght_list_push( &list, second );
+	ght_list_push( &list, third );
 
 	/* act/assert */
 	test_t *cur;
@@ -246,15 +246,15 @@ START_TEST( test_remove_ght_mod_for_each ) {
 	double d = 2.1;
 
 	/* run through the list once before the test to make sure we can iterate through it multiple times */
-	ght_mod_for_each( &list, &iter, cur, test_t ){}
+	ght_list_mod_for_each( &list, &iter, cur, test_t ){}
 
 	/* run the test */
-	ght_mod_for_each( &list, &iter, cur, test_t ){
+	ght_list_mod_for_each( &list, &iter, cur, test_t ){
 		ck_assert( cur->a == i );
 		ck_assert( cur->b == d ); 
 
 		/* remove and free the node */
-		ght_remove( &list, cur );
+		ght_list_remove( &list, cur );
 		cur->node.next = NULL;
 		cur->node.prev = NULL;
 		free( cur );
@@ -266,7 +266,7 @@ START_TEST( test_remove_ght_mod_for_each ) {
 	ck_assert( i == 4 );
 
 	int count = 0;
-	ght_mod_for_each( &list, &iter, cur, test_t) {
+	ght_list_mod_for_each( &list, &iter, cur, test_t) {
 		count++;
 	}
 
@@ -803,11 +803,11 @@ ghost_data_suite(){
 
 	/* add individual tests */
 	tcase_add_test( tc_list, test_create_list );
-	tcase_add_test( tc_list, test_ght_push );
-	tcase_add_test( tc_list, test_ght_remove );
-	tcase_add_test( tc_list, test_ght_remove_all );
-	tcase_add_test( tc_list, test_ght_mod_for_each );
-	tcase_add_test( tc_list, test_remove_ght_mod_for_each );
+	tcase_add_test( tc_list, test_ght_list_push );
+	tcase_add_test( tc_list, test_ght_list_remove );
+	tcase_add_test( tc_list, test_ght_list_remove_all );
+	tcase_add_test( tc_list, test_ght_list_mod_for_each );
+	tcase_add_test( tc_list, test_remove_ght_list_mod_for_each );
 
 	suite_add_tcase( suite, tc_list );
 

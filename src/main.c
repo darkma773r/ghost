@@ -8,7 +8,6 @@
 #include <string.h>
 #include <xcb/xcb.h>
 #include <inttypes.h>
-#include "ghost.h"
 
 #define MAX_STR_LEN 512
 #define OPAQUE 0xffffffff
@@ -16,7 +15,7 @@
 
 
 /* Returns an atom for the given name */
-static xcb_atom_t 
+xcb_atom_t 
 atom_for_name(xcb_connection_t *conn, const char *name){
 	xcb_intern_atom_cookie_t cookie;
 	xcb_intern_atom_reply_t *reply;
@@ -46,7 +45,7 @@ atom_for_name(xcb_connection_t *conn, const char *name){
 }
 
 /* Applies the given float opacity to the window. */
-static void 
+void 
 apply_opacity( xcb_connection_t *conn, xcb_window_t win, double opacity ){
 	uint32_t val = (uint32_t) (opacity * OPAQUE);	
 	printf( "setting opacity for window 0x%x to %d\n", win, val );
@@ -64,7 +63,7 @@ apply_opacity( xcb_connection_t *conn, xcb_window_t win, double opacity ){
 
 /* Returns a string property for the given window. The returned string must be
 freed by the caller. */
-static char *
+char *
 get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) {
 	xcb_get_property_cookie_t prop_cookie;
 	xcb_get_property_reply_t *reply;
@@ -117,7 +116,7 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 }
 
 /* Registers this client for events from the given window. */
-static void
+void
 register_for_events( xcb_connection_t *conn, xcb_window_t win, uint32_t events ){
 	uint32_t values[1];
 	values[0] = events;
@@ -128,7 +127,7 @@ register_for_events( xcb_connection_t *conn, xcb_window_t win, uint32_t events )
  
 
 /* list the properties available on the given window */
-static void
+void
 list_properties( xcb_connection_t *conn, xcb_window_t win ){
 	xcb_list_properties_cookie_t cookie;
 	xcb_list_properties_reply_t *reply;
@@ -183,7 +182,7 @@ list_properties( xcb_connection_t *conn, xcb_window_t win ){
 }
 
 /* Gets the highest parent window that is not the root */
-static xcb_window_t
+xcb_window_t
 get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 	xcb_window_t current;
 	xcb_window_t parent;
@@ -223,7 +222,7 @@ get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 	return 0;
 }
 
-static char *checked_properties[] = {
+char *checked_properties[] = {
 	"WM_CLASS",
 	"_NET_WM_CLASS",
 	"WM_NAME",
@@ -232,7 +231,7 @@ static char *checked_properties[] = {
 
 /* Checks the configuration for a rule matching this window and
 applies the specified opacity setting if it exists. */
-static void 
+void 
 check_window( xcb_connection_t *conn, xcb_window_t win ){
 	printf( "checking window 0x%x\n", win );
 	char *str;
@@ -268,7 +267,7 @@ check_window( xcb_connection_t *conn, xcb_window_t win ){
 }
 
 /* Checks the given window and all child windows recursively. */
-static void 
+void 
 check_windows_recursive(xcb_connection_t *conn, xcb_window_t win){
 	xcb_query_tree_cookie_t tree_cookie;
 	xcb_query_tree_reply_t *reply;
@@ -304,7 +303,7 @@ check_windows_recursive(xcb_connection_t *conn, xcb_window_t win){
 
 /* Continuously waits for window events and applies opacity settings as needed. 
 This method does not return. */
-static void
+void
 monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
 	/* register to receive new window events */
 	uint32_t event_mask = XCB_CW_EVENT_MASK;
@@ -345,4 +344,94 @@ monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
 		free( event );
 	}		
 }
+		
+/* struct for passing around command line arguments */
+typedef struct cmdargs_t {
+	int help;
+	int monitor;
+} cmdargs_t;
 
+/* struct containing command line argument defaults */
+cmdargs_t DEFAULT_ARGS = {
+	0,
+	0
+};
+
+/* Prints a usage message and exits. */
+void
+usage(){
+	fprintf( stderr,
+		"GHOST\nA simple program for adding transparency to X windows.\n");
+	fprintf( stderr,
+		"Written by Matt Juntunen, 2014\n\n");
+	fprintf( stderr,
+		"USAGE: ghost [OPTIONS]\n" );
+	fprintf( stderr,
+		"   -h, --help      Display this message\n");
+	fprintf( stderr,
+		"   -m, --monitor   Enter monitoring mode. In this mode, the program will continuously "
+		"monitor events from the X windowing system and apply opacity rules as needed.\n");
+	
+	exit( 1 );
+}
+
+/* Macro for comparing the long and short versions of command-line
+flags at once. It's just a lot of typing otherwise! */
+#define FLAG_COMPARE(X,Y,Z) (strcmp((X),(Z)) == 0 || strcmp((Y),(Z)) == 0) 
+
+/* Parses the command line arguments and displays the usage message if requested
+or no arguments were given. */
+cmdargs_t
+parse_args( int argc, char **argv ){
+	cmdargs_t args = DEFAULT_ARGS;
+
+	/* the first argument is the executable name so start at 1 */
+	int i;
+	for ( i=1; i<argc; i++ ){
+		if ( FLAG_COMPARE( "-h", "--help", argv[i] )){
+			args.help = 1;	
+		} else if ( FLAG_COMPARE( "-m", "--monitor", argv[i] )){
+			args.monitor = 1;
+		} else {
+			fprintf( stderr, "Unknown argument: %s\n", argv[i] );	
+			usage();
+		}		
+	}	 
+
+	if ( argc < 2 || args.help ){
+		usage();
+	}	
+
+	return args;
+} 
+
+/* If it's an entry point ye seek, then look no further. */
+int 
+main( int argc, char **argv ){
+	/* check the command line */
+	cmdargs_t args = parse_args( argc, argv );
+
+	xcb_connection_t *conn;
+	const xcb_setup_t *setup;
+	xcb_window_t winroot;
+
+	/* connect to the X server */
+	conn = xcb_connect( NULL, NULL );
+	setup = xcb_get_setup( conn );
+
+	/* get a reference to the root screen */
+	winroot = xcb_setup_roots_iterator( setup ).data->root;
+
+	/* check the currently open windows */
+	check_windows_recursive( conn, winroot );	
+
+	if ( args.monitor ){
+		/* wait forever and apply settings based on window events */
+		monitor_window_events( conn, winroot );
+	}
+
+	/* close the connection */
+	xcb_disconnect( conn );
+
+	return 0;
+}
