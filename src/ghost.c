@@ -3,17 +3,13 @@
  * A simple program to apply transparency to windows in the X11 windowing system.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
-#include <xcb/xcb.h>
-#include <inttypes.h>
 #include "ghost.h"
 
-#define MAX_STR_LEN 512
 #define OPAQUE 0xffffffff
 #define OPACITY "_NET_WM_WINDOW_OPACITY"
 
+/* ################ Helper functions ################### */
 
 /* Returns an atom for the given name */
 static xcb_atom_t 
@@ -34,7 +30,7 @@ atom_for_name(xcb_connection_t *conn, const char *name){
 	);
 
 	if ( !reply ){
-		fprintf( stderr, "Unable to intern atom with name %s\n", name);
+		error( "Unable to intern atom with name %s\n", name );
 		return XCB_ATOM_NONE;
 	}	
 
@@ -49,7 +45,7 @@ atom_for_name(xcb_connection_t *conn, const char *name){
 static void 
 apply_opacity( xcb_connection_t *conn, xcb_window_t win, double opacity ){
 	uint32_t val = (uint32_t) (opacity * OPAQUE);	
-	printf( "setting opacity for window 0x%x to %d\n", win, val );
+	debug( 2, "setting opacity for window 0x%x to %d\n", win, val );
 	xcb_change_property( conn, /* connection */
 		XCB_PROP_MODE_REPLACE,	/* mode */
 		win,	/* window */
@@ -89,7 +85,7 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 	); 
 
 	if ( !reply ){
-		fprintf( stderr, "Unable to get property 0x%x from window 0x%x\n", prop, win);
+		error( "Unable to get property 0x%x from window 0x%x\n", prop, win);
 		return NULL;
 	}
 
@@ -104,12 +100,7 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 		return NULL;
 	}
 
-	result = malloc( len + 1);
-	
-	if ( !result ){	
-		fprintf( stderr, "Unable to allocate memory for string of length %d\n", len + 1); 
-		return NULL;
-	}
+	result = checked_malloc( len + 1 );
 
 	strncpy( result, data, len );
 
@@ -125,62 +116,6 @@ register_for_events( xcb_connection_t *conn, xcb_window_t win, uint32_t events )
 	xcb_change_window_attributes( conn, win, XCB_CW_EVENT_MASK, values );
 	xcb_flush( conn );
 } 
- 
-
-/* list the properties available on the given window */
-static void
-list_properties( xcb_connection_t *conn, xcb_window_t win ){
-	xcb_list_properties_cookie_t cookie;
-	xcb_list_properties_reply_t *reply;
-
-	xcb_atom_t *atoms;
-	int atoms_len;
-
-	xcb_get_atom_name_cookie_t name_cookie;
-	xcb_get_atom_name_reply_t *name_reply;
-	int name_len;
-	char *name_buffer;
-
-	char *value;
-	
-	cookie = xcb_list_properties( conn, win );
-	reply = xcb_list_properties_reply( conn, 
-		cookie, 
-		NULL /* error pointer */ 
-	);
-
-	atoms = xcb_list_properties_atoms( reply );
-	atoms_len = xcb_list_properties_atoms_length( reply );
-
-	int i;
-	for ( i=0; i<atoms_len; i++ ){
-		name_cookie = xcb_get_atom_name( conn, atoms[i] );	
-		name_reply = xcb_get_atom_name_reply( conn,
-			name_cookie,
-			NULL /* error pointer */
-		);
-		name_len = xcb_get_atom_name_name_length( name_reply );	
-		name_buffer = malloc( name_len + 1 );
-
-		strncpy( name_buffer, 
-			xcb_get_atom_name_name( name_reply ),
-			name_len
-		);
-
-		printf( "->%s\n", name_buffer );
-
-		free( name_buffer );
-
-		value = get_string_property( conn, win, atoms[i] );	
-
-		if ( value ){
-			printf( "\t%s\n", value );
-			free( value );
-		}
-	}
-
-	free( reply );
-}
 
 /* Gets the highest parent window that is not the root */
 static xcb_window_t
@@ -200,7 +135,7 @@ get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 		);
 
 		if ( !reply ){
-			fprintf( stderr, "Failed to query tree for window 0x%x\n", win );		
+			error( "Failed to query tree for window 0x%x\n", win );		
 			return 0;
 		} 
 
@@ -223,71 +158,131 @@ get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 	return 0;
 }
 
-static char *checked_properties[] = {
-	"WM_CLASS",
-	"_NET_WM_CLASS",
-	"WM_NAME",
-	"_NET_WM_NAME"
-};
+static xcb_atom_t
+lookup_atom( ghost_t *ghost, const char *name ){
+	debug( 3, "[lookup_atom] Looking up atom with name %s\n", name ); 
+	xcb_atom_t * atom = (xcb_atom_t *) ght_map_get( ghost->atom_cache, (void *) name ); 
+	if ( atom == NULL ){
+		debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" );
+		/* not found in the cache so look it up */
+		atom = checked_malloc( sizeof( xcb_atom_t ));
+		*atom = atom_for_name( ghost->conn, name );
+		
+		/* store the atom for future use */
+		ght_map_put( ghost->atom_cache, (void *) name, (void *) atom );
+	}
 
-/* Checks the configuration for a rule matching this window and
-applies the specified opacity setting if it exists. */
-static void 
-check_window( xcb_connection_t *conn, xcb_window_t win ){
-	printf( "checking window 0x%x\n", win );
-	char *str;
-	int len = sizeof( checked_properties ) / sizeof( char * );
-	xcb_window_t target_win;
+	debug( 3, "[lookup_atom] Atom for name %s = 0x%x\n", name, *atom );
+	return *atom;
+}
 
-	int i, done = 0;
-	for ( i=0; i<len; i++ ){
-		str = get_string_property( conn,
-				win,
-				atom_for_name( conn, checked_properties[i] )
-			);
-		if ( str ){
-			if ( strcmp( str, "xterm") == 0 ){
-				printf( "found xterm! i = %d\n", i );
-					
-				if (target_win = get_top_window( conn, win)) {
-					apply_opacity( conn, target_win, 0.85 );	
-					list_properties( conn, win );
-				} else {
-					fprintf( stderr, "Unable to find top level window for window 0x%x",
-						win);
-				}	
-				done = 1;
-			}	
-			free( str );
+/* Checks the given window against the rule and returns a configured
+ght_window_t pointer if the window matches the rule. The caller is responsible
+for freeing the ght_window_t memory. */
+static ght_window_t *
+check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
+	/* go through each matcher in the rule to see if they all match */
+	char *win_value;
+	int matched = 0;
+
+	ght_matcher_t *matcher;
+	ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ){
+		win_value = get_string_property( ghost->conn, 
+			win, 
+			lookup_atom( ghost, matcher->name ));
+		matched = win_value != NULL
+			&& strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
+
+		matched = 1;
+		free( win_value );
+
+		if ( !matched ){
+			return NULL;
+		}
+	} 
+
+	/* This window matched all values! Create a ghost window struct. */
+	ght_window_t *ght_win = checked_malloc( sizeof( ght_window_t ));
+	ght_win->win = win;
+	ght_win->target_win = get_top_window( ghost->conn, win );
+	ght_win->focus_opacity = rule->focus_opacity;
+	ght_win->normal_opacity = rule->normal_opacity;
+
+	return ght_win;
+}
+
+/* Returns a new ght_window_t if this window matches one of the configured
+rules */
+static ght_window_t *
+check_window( ghost_t *ghost, xcb_window_t win ){
+	debug( 2, "[check_window] checking window 0x%x\n", win );	
+	
+	/* find the first rule that matches */		
+	ght_window_t *ght_win;
+	int idx = 0;
+	ght_rule_t *rule;
+	ght_list_for_each( &(ghost->rules), rule, ght_rule_t ){
+		ght_win = check_window_against_rule( ghost, win, rule );
+		if ( ght_win != NULL ){
+			debug( 1, "[check_window] Found rule match for window 0x%x at index %d: "
+				"normal=%f, focus=%f\n",
+				win, idx, 
+				ght_win->normal_opacity,
+				ght_win->focus_opacity );	 
+
+			return ght_win;
 		}
 
-		if ( done ){
-			break;
-		}		
+		++idx;
+	} 
+
+	return NULL;
+}
+
+/* Adds the given ght_window_t to the tracked window map, freeing any
+previous entry that may have been there. */
+void
+track_window( ghost_t *ghost, ght_window_t *ght_win ){
+	debug( 2, "[track_window] Adding window to tracked list: "
+		"win=0x%x, target_win=0x%x, "
+		"normal_opacity=%f, focus_opacity=%f\n",
+		ght_win->win, ght_win->target_win,
+		ght_win->normal_opacity, ght_win->focus_opacity );
+
+	ght_window_t *prev = ght_map_put( ghost->win_map, 
+		&(ght_win->win), 
+		ght_win ); 
+
+	/* free the previous version if we had one */
+	if ( prev != NULL ){
+		free( prev );
 	}	
 }
 
 /* Checks the given window and all child windows recursively. */
 static void 
-check_windows_recursive(xcb_connection_t *conn, xcb_window_t win){
+load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 	xcb_query_tree_cookie_t tree_cookie;
 	xcb_query_tree_reply_t *reply;
 	int child_count;
 	xcb_window_t *child;
 
-	/* visit this window */
-	check_window( conn, win );
+	/* check this window */
+	ght_window_t *ght_win = check_window( ghost, win );
+	if ( ght_win != NULL ){
+		track_window( ghost, ght_win );		
+	}
 
 	/* visit the child windows */
-	tree_cookie = xcb_query_tree(conn, win);
+	tree_cookie = xcb_query_tree( ghost->conn, win );
 
-	reply = xcb_query_tree_reply( conn, 
+	reply = xcb_query_tree_reply( ghost->conn, 
 		tree_cookie, 
 		NULL /* error pointer */
 	);
 
 	if ( !reply ){
-		fprintf( stderr, "Failed to query tree for window 0x%x\n", win );		
+		error( "Failed to query tree for window 0x%x\n", win );		
 		return;
 	}
 
@@ -296,7 +291,7 @@ check_windows_recursive(xcb_connection_t *conn, xcb_window_t win){
 	child = xcb_query_tree_children( reply );
 	int i;
 	for ( i=0; i<child_count; i++ ){
-		check_windows_recursive( conn, child[i] );	
+		load_windows_recursive( ghost, child[i] );	
 	}
 
 	free( reply );
@@ -328,7 +323,7 @@ monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
 				xcb_create_notify_event_t *create_evt = 
 					(xcb_create_notify_event_t *) event;
 				printf( "Window created! 0x%x\n", create_evt->window );
-				check_window( conn, create_evt->window );
+				/*check_window( conn, create_evt->window );*/
 				break;
 			}
 			/* this is needed for use with reparenting window managers since we
@@ -338,7 +333,7 @@ monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
 				xcb_reparent_notify_event_t *reparent_evt =
 					(xcb_reparent_notify_event_t *) event;
 				printf( "Window reparented! 0x%x\n", reparent_evt->window );
-				check_window( conn, reparent_evt->window );
+				/* check_window( conn, reparent_evt->window ); */
 				break;
 			}		
 		}
@@ -346,3 +341,153 @@ monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
 	}		
 }
 
+/* Clears all entries in the given map and releases their memory */
+static void
+clear_dynamic_map( map_t *map ){
+	/* free the dynamic memory */
+	map_entry_t *entry;
+	map_iter_t iter;
+	ght_map_for_each_entry( map, &iter, entry ){
+		debug( 1, "[%d] removing key: 0x%x\n",iter.bucket_idx, (*(int *)(entry->key)) );
+		free( entry->value );
+		ght_map_remove_entry( map, entry );	
+	} 	
+
+	map_entry_t *other_entry;
+	map_iter_t other;
+	int counter = 0;
+	ght_map_for_each_entry( map, &other, other_entry){
+		debug( 1, "[%d] found key: 0x%x\n",other.bucket_idx, (*(int *)(other_entry->key)) );
+		counter++;
+	}
+
+	debug( 1, "size after clearing = %d\n", counter );
+}
+
+/* Clears and frees all memory associated with a list of matchers */
+static void
+clear_matcher_list( list_t *matcher_list){
+	list_iter_t iter;
+	ght_matcher_t *matcher;
+	ght_list_mod_for_each( matcher_list, &iter, matcher, ght_matcher_t ){
+		ght_list_remove( matcher_list, matcher );
+		free( matcher );
+	} 
+}
+
+/* Clears and frees all memory associated with a list of rules */
+static void
+clear_rule_list( list_t *rule_list ){
+	list_iter_t iter;
+	ght_rule_t *rule;
+	ght_list_mod_for_each( rule_list, &iter, rule, ght_rule_t ){
+		clear_matcher_list( &(rule->matchers) );	
+		ght_list_remove( rule_list, rule );
+		free( rule );	
+	}
+}
+
+/* ##################### Ghost functions ################## */
+
+static const list_t EMPTY_LIST = { NULL };
+
+ghost_t *
+ght_create( const char *displayname, int *screenp ){
+	ghost_t *ghost = checked_malloc( sizeof( ghost_t ));
+
+	/* initialize members */
+	ghost->rules = EMPTY_LIST; 
+	ghost->win_map = ght_winmap_create( MAP_SIZE_LG );
+	ghost->atom_cache = ght_strmap_create( MAP_SIZE_LG );
+
+	/* connect to the x server */
+	ghost->conn = xcb_connect( displayname, screenp );
+
+	return ghost;
+}
+
+void
+ght_destroy( ghost_t *ghost ){
+	/* disconnect from the x server */
+	xcb_disconnect( ghost->conn );
+
+	debug( 1, "disconnected\n" );
+	
+	/* clear the rules list */
+	clear_rule_list( &(ghost->rules) );	
+
+	debug( 1, "rules cleared\n" );
+
+	/* clear and release the window map */	
+	clear_dynamic_map( ghost->win_map );
+	ght_map_free( ghost->win_map );
+
+	debug( 1, "win map cleared\n" );
+
+	/* clear and release the atom cache map */
+	clear_dynamic_map( ghost->atom_cache );
+	ght_map_free( ghost->atom_cache );
+
+	debug( 1, "atom cache cleared\n" );
+
+	/* free the ghost itself */
+	free( ghost );
+
+	debug( 1, "ghost cleared\n" );
+}
+
+int
+ght_load_windows( ghost_t *ghost ){
+	/* clear the current map */
+	clear_dynamic_map( ghost->win_map );
+	
+	/* get the root window */	
+	const xcb_setup_t *setup = xcb_get_setup( ghost->conn );
+	xcb_window_t winroot = xcb_setup_roots_iterator( setup ).data->root;
+
+	/* scan the whole window tree */
+	load_windows_recursive( ghost, winroot );
+} 
+
+
+const char *matcher_class = "WM_CLASS";
+const char *matcher_value = "xterm";
+
+/* main method for testing purposes */
+int
+main(void){
+	debug( 1, "Starting ghost\n" );
+	/* create the ghost */
+	ghost_t *ghost = ght_create( NULL, NULL );
+
+	debug( 1, "Created ghost. conn=0x%x\n", ghost->conn );
+
+	/* adding criteria */
+	ght_matcher_t *xterm = checked_malloc( sizeof( ght_matcher_t ));
+	strcpy( xterm->name, matcher_class );
+	strcpy( xterm->value, matcher_value );
+
+	ght_rule_t *rule = checked_malloc( sizeof( ght_rule_t ));
+	rule->matchers = EMPTY_LIST;
+	rule->focus_opacity = 0.8f;
+	rule->normal_opacity = 0.5f;
+
+	ght_list_push( &(rule->matchers), xterm ); 
+	
+	ght_list_push( &(ghost->rules), rule );
+
+	/* loading windows */
+	debug( 1, "Loading windows...\n" );
+	
+	ght_load_windows( ghost );
+
+		
+	debug( 1, "Done loading windows\n" );	
+	
+	/* destroy the ghost */
+	ght_destroy( ghost );
+
+	debug( 1, "Ghost destroyed\n" );
+
+	return EXIT_SUCCESS;
+}	
