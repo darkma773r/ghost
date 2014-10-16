@@ -257,12 +257,12 @@ ght_map_iter_next( map_iter_t *iter ){
 
 /* Map<char[], void *> */
 
-int
+unsigned int
 ght_strmap_key_hash( void *key ){
 	/* Using the djb2 hash algorithm here. Thank you, Daniel J Bernstein! */ 
 	char *char_key = (char *) key;
 	
-	int hash = 5381, c;
+	unsigned int hash = 5381, c;
 	while ( c = *char_key++ ){
 		hash = (( hash << 5 ) + hash ) + c;
 			/* this is equivalent to hash * 33 + c */
@@ -297,7 +297,7 @@ ght_strmap_create( int buckets_size ){
 
 /* Map<xcb_window_t, void *> */
 
-int
+unsigned int
 ght_winmap_key_hash( void *key ){
 	return (int)*((xcb_window_t *) key);
 }

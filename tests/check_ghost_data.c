@@ -789,6 +789,51 @@ START_TEST( test_ght_map_for_each_nulls ){
 }
 END_TEST
 
+START_TEST( test_ght_map_for_each_entry_remove_entry ){
+	printf( "start\n" );
+	/* arrange */
+	map_t *map = ght_strmap_create( MAP_SIZE_SM );
+
+
+	char key[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	int len = strlen( key );
+
+	for ( ; len > 0; --len ){
+		key[len] = '\0';
+		ght_map_put( map, key, NULL ); 
+	}	
+
+	printf( "check\n" );
+	/* act */
+	int counter = 0;
+	map_iter_t iter;
+	map_entry_t *entry;
+	ght_map_for_each_entry( map, &iter, entry ){
+		printf( "bucket_idx: %d, key: %s\n",
+			iter.bucket_idx, entry->key); 
+		ght_map_remove_entry( map, entry );
+		counter++;
+	}		
+
+	ck_assert_int_eq( 52, counter );
+
+	counter = 0;
+	ght_map_for_each_entry( map, &iter, entry ){
+		printf( "bucket_idx: %d, key: %s\n",
+			iter.bucket_idx, entry->key); 
+		ght_map_remove_entry( map, entry );
+		counter++;
+	}
+
+	ck_assert_int_eq( 0, counter );
+
+	/* clean up */
+	ght_map_free( map );
+	
+	printf( "end\n" );
+}
+END_TEST
+
 /* ##################### TEST SETUP ################### */
 
 Suite *
@@ -834,6 +879,7 @@ ghost_data_suite(){
 	tcase_add_test( tc_map, test_ght_map_for_each_entry_removed_entries );
 	tcase_add_test( tc_map, test_ght_map_for_each_entry_iterate_and_remove );
 	tcase_add_test( tc_map, test_ght_map_for_each_entry_empty );
+	tcase_add_test( tc_map, test_ght_map_for_each_entry_remove_entry );
 	
 	tcase_add_test( tc_map, test_ght_map_for_each );
 	tcase_add_test( tc_map, test_ght_map_for_each_removed_entries );

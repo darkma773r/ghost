@@ -348,7 +348,6 @@ clear_dynamic_map( map_t *map ){
 	map_entry_t *entry;
 	map_iter_t iter;
 	ght_map_for_each_entry( map, &iter, entry ){
-		debug( 1, "[%d] removing key: 0x%x\n",iter.bucket_idx, (*(int *)(entry->key)) );
 		free( entry->value );
 		ght_map_remove_entry( map, entry );	
 	} 	
@@ -357,11 +356,8 @@ clear_dynamic_map( map_t *map ){
 	map_iter_t other;
 	int counter = 0;
 	ght_map_for_each_entry( map, &other, other_entry){
-		debug( 1, "[%d] found key: 0x%x\n",other.bucket_idx, (*(int *)(other_entry->key)) );
 		counter++;
 	}
-
-	debug( 1, "size after clearing = %d\n", counter );
 }
 
 /* Clears and frees all memory associated with a list of matchers */

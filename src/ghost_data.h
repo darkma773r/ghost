@@ -123,7 +123,7 @@ ght_list_iter_next( list_iter_t *iter );
 	
 
 /* Map helper function for computing a key hash value */
-typedef int (*hash_fn)( void *key );
+typedef unsigned int (*hash_fn)( void *key );
 
 /* Map helper function for comparing two keys. The function should
 return true if the two keys are equal. */
@@ -217,7 +217,7 @@ map_entry_t *
 ght_map_iter_next( map_iter_t *iter );
 
 /* C string hashing function. */
-int
+unsigned int
 ght_strmap_key_hash( void *key );
 
 /* C string comparision function. */
@@ -233,7 +233,7 @@ map_t *
 ght_strmap_create( int buckets_size );
 
 /* xcb_window_t hashing function. This just returns the key as an int. */
-int
+unsigned int
 ght_winmap_key_hash( void *key );
 
 /* xcb_window_t equals function. */
