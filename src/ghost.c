@@ -13,18 +13,18 @@
 
 /* Returns an atom for the given name */
 static xcb_atom_t 
-atom_for_name(xcb_connection_t *conn, const char *name){
+atom_for_name( ghost_t *ghost, const char *name){
 	xcb_intern_atom_cookie_t cookie;
 	xcb_intern_atom_reply_t *reply;
 	xcb_atom_t result;
 	
-	cookie = xcb_intern_atom( conn,
+	cookie = xcb_intern_atom( ghost->conn,
 		0, /* only_if_exists; set to false to create the atom if needed */
 		strlen(name), /* data length */
 		name	/* the data */
 	);
 
-	reply = xcb_intern_atom_reply( conn, 
+	reply = xcb_intern_atom_reply( ghost->conn, 
 		cookie, 
 		NULL /* error pointer */
 	);
@@ -43,32 +43,32 @@ atom_for_name(xcb_connection_t *conn, const char *name){
 
 /* Applies the given float opacity to the window. */
 static void 
-apply_opacity( xcb_connection_t *conn, xcb_window_t win, double opacity ){
+apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
 	uint32_t val = (uint32_t) (opacity * OPAQUE);	
-	debug( 2, "setting opacity for window 0x%x to %d\n", win, val );
-	xcb_change_property( conn, /* connection */
+	debug( 2, "setting opacity for window 0x%x to %d\n", win->target_win, val );
+	xcb_change_property( ghost->conn, /* connection */
 		XCB_PROP_MODE_REPLACE,	/* mode */
-		win,	/* window */
-		atom_for_name( conn, OPACITY ), /* atom to change */
+		win->target_win,	/* window */
+		atom_for_name( ghost, OPACITY ), /* atom to change */
 		XCB_ATOM_CARDINAL,	/* property type */
 		32,	/* format, meaning whether the data should be considered as a list of 8-bit, 16-bit, or 32-bit quantities */
 		1,	/* data length */
 		(unsigned char *) &val	/* the data for the property */
 	);
-	xcb_flush( conn );
+	xcb_flush( ghost->conn );
 }
 
 /* Returns a string property for the given window. The returned string must be
 freed by the caller. */
 static char *
-get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) {
+get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
 	xcb_get_property_cookie_t prop_cookie;
 	xcb_get_property_reply_t *reply;
 	void *data;
 	int len;
 	char *result;
 
-	prop_cookie = xcb_get_property( conn,
+	prop_cookie = xcb_get_property( ghost->conn,
 		0, /* _delete */
 		win,	/* the window */
 		prop,	/* the property */
@@ -77,9 +77,9 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 		MAX_STR_LEN /* the max length of the data */
 	);
 
-	xcb_flush( conn );
+	xcb_flush( ghost->conn );
 
-	reply = xcb_get_property_reply( conn, 
+	reply = xcb_get_property_reply( ghost->conn, 
 		prop_cookie, /* the cookie */ 
 		NULL	/* error pointer */
 	); 
@@ -122,7 +122,7 @@ register_for_events( xcb_connection_t *conn, xcb_window_t win, uint32_t events )
 
 /* Gets the highest parent window that is not the root */
 static xcb_window_t
-get_top_window( xcb_connection_t *conn, xcb_window_t win ){
+get_top_window( ghost_t *ghost, xcb_window_t win ){
 	xcb_window_t current;
 	xcb_window_t parent;
 	xcb_window_t root;
@@ -131,8 +131,8 @@ get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 
 	current = win;
 	while ( 1 ){
-		tree_cookie = xcb_query_tree( conn, current );
-		reply = xcb_query_tree_reply( conn,
+		tree_cookie = xcb_query_tree( ghost->conn, current );
+		reply = xcb_query_tree_reply( ghost->conn,
 			tree_cookie,
 			NULL /* error pointer */
 		);
@@ -173,7 +173,7 @@ lookup_atom( ghost_t *ghost, const char *name ){
 		/* debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" ); */
 		/* not found in the cache so look it up */
 		atom = checked_malloc( sizeof( xcb_atom_t ));
-		*atom = atom_for_name( ghost->conn, name );
+		*atom = atom_for_name( ghost, name );
 		
 		/* store the atom for future use */
 		ght_map_put( ghost->atom_cache, (void *) name, (void *) atom );
@@ -194,9 +194,10 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
 
 	ght_matcher_t *matcher;
 	ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ){
-		win_value = get_string_property( ghost->conn, 
+		win_value = get_string_property( ghost, 
 			win, 
 			lookup_atom( ghost, matcher->name ));
+
 		matched = win_value != NULL
 			&& strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
 
@@ -210,7 +211,7 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
 	/* This window matched all values! Create a ghost window struct. */
 	ght_window_t *ght_win = checked_malloc( sizeof( ght_window_t ));
 	ght_win->win = win;
-	ght_win->target_win = get_top_window( ghost->conn, win );
+	ght_win->target_win = get_top_window( ghost, win );
 	ght_win->focus_opacity = rule->focus_opacity;
 	ght_win->normal_opacity = rule->normal_opacity;
 
@@ -262,11 +263,11 @@ track_window( ghost_t *ghost, ght_window_t *ght_win ){
 	/* free the previous version if we had one */
 	if ( prev != NULL ){
 		free( prev );
-	}	
+	}
 }
 
 /* Checks the given window and all child windows recursively. */
-static void 
+void 
 load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 	xcb_query_tree_cookie_t tree_cookie;
 	xcb_query_tree_reply_t *reply;
@@ -276,6 +277,7 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 	/* check this window */
 	ght_window_t *ght_win = check_window( ghost, win );
 	if ( ght_win != NULL ){
+		/* start tracking the window */
 		track_window( ghost, ght_win );		
 	}
 
@@ -303,50 +305,6 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 	free( reply );
 }
 
-/* Continuously waits for window events and applies opacity settings as needed. 
-This method does not return. */
-static void
-monitor_window_events( xcb_connection_t *conn, xcb_window_t winroot ){
-	/* register to receive new window events */
-	uint32_t event_mask = XCB_CW_EVENT_MASK;
-	uint32_t event_values[2] = {
-		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
-	};
-
-	xcb_change_window_attributes_checked( conn,
-		winroot,
-		event_mask,
-		event_values
-	);
-	xcb_flush( conn );
-	
-	/* wait for new window events */
-	xcb_generic_event_t *event;
-	while ( event = xcb_wait_for_event( conn )){
-		switch ( event->response_type & ~0x80 ){
-			/* apply settings to new windows */
-			case XCB_CREATE_NOTIFY: {
-				xcb_create_notify_event_t *create_evt = 
-					(xcb_create_notify_event_t *) event;
-				printf( "Window created! 0x%x\n", create_evt->window );
-				/*check_window( conn, create_evt->window );*/
-				break;
-			}
-			/* this is needed for use with reparenting window managers since we
-			may not be able to apply opacity settings to the correct window when
-			the window is first created. */
-			case XCB_REPARENT_NOTIFY: {
-				xcb_reparent_notify_event_t *reparent_evt =
-					(xcb_reparent_notify_event_t *) event;
-				printf( "Window reparented! 0x%x\n", reparent_evt->window );
-				/* check_window( conn, reparent_evt->window ); */
-				break;
-			}		
-		}
-		free( event );
-	}		
-}
-
 /* Clears all entries in the given map and releases their memory */
 static void
 clear_dynamic_map( map_t *map ){
@@ -357,13 +315,6 @@ clear_dynamic_map( map_t *map ){
 		free( entry->value );
 		ght_map_remove_entry( map, entry );	
 	} 	
-
-	map_entry_t *other_entry;
-	map_iter_t other;
-	int counter = 0;
-	ght_map_for_each_entry( map, &other, other_entry){
-		counter++;
-	}
 }
 
 /* Clears and frees all memory associated with a list of matchers */
@@ -445,21 +396,103 @@ ght_load_windows( ghost_t *ghost ){
 	
 	/* get the root window */	
 	const xcb_setup_t *setup = xcb_get_setup( ghost->conn );
-	xcb_window_t winroot = xcb_setup_roots_iterator( setup ).data->root;
+	ghost->winroot = xcb_setup_roots_iterator( setup ).data->root;
 
 	/* scan the whole window tree */
-	load_windows_recursive( ghost, winroot );
+	load_windows_recursive( ghost, ghost->winroot );
 } 
 
 int
 ght_apply_normal_settings( ghost_t *ghost ){
 	map_iter_t iter;
-	ght_window_t *win;
-	ght_map_for_each( ghost->win_map, &iter, win, ght_window_t * ){
-		debug(2, "Visiting window; win = 0x%x, target_win = 0x%x\n",
-		    win->win, win->target_win );
-		apply_opacity( ghost->conn, win->target_win, win->normal_opacity );
+	ght_window_t *ght_win;
+	ght_map_for_each( ghost->win_map, &iter, ght_win, ght_window_t * ){
+		apply_opacity( ghost, ght_win, ght_win->normal_opacity );
 	}
+}
+
+void
+ght_monitor( ghost_t *ghost ){
+	/* register to receive new window events */
+	uint32_t event_mask = XCB_CW_EVENT_MASK;
+	uint32_t event_values[2] = {
+		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+	};
+
+	xcb_change_window_attributes_checked( ghost->conn,
+		ghost->winroot,
+		event_mask,
+		event_values
+	);
+	xcb_flush( ghost->conn );
+	
+	/* wait for new window events */
+	xcb_generic_event_t *event;
+	while ( event = xcb_wait_for_event( ghost->conn )){
+		switch ( event->response_type & ~0x80 ){
+			/* apply settings to new windows */
+			case XCB_CREATE_NOTIFY: {
+				xcb_create_notify_event_t *create_evt = 
+					(xcb_create_notify_event_t *) event;
+				debug( 1, "Window created! 0x%x\n", create_evt->window );
+
+				/* check the window and any of it's children for matches 
+				load_windows_recursive( ghost, create_evt->window ); */
+
+				/* check this window */
+				ght_window_t *ght_win = check_window( ghost, create_evt->window );
+				if ( ght_win != NULL ){
+					track_window( ghost, ght_win );		
+					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+				}
+				break;
+			}
+			/* this is needed for use with reparenting window managers since we
+			may not be able to apply opacity settings to the correct window when
+			the window is first created. */
+			case XCB_REPARENT_NOTIFY: {
+				xcb_reparent_notify_event_t *reparent_evt =
+					(xcb_reparent_notify_event_t *) event;
+				debug( 1, "Window reparented! 0x%x\n", reparent_evt->window ); 
+
+				/* check if this is a tracked window */
+				ght_window_t *ght_win = (ght_window_t *) ght_map_get( ghost->win_map, &(reparent_evt->window));	
+				if ( ght_win != NULL ){
+					debug( 1, "old top window 0x%x\n", ght_win->target_win );
+					ght_win->target_win = get_top_window( ghost, ght_win->win );
+					debug( 1, "new top window 0x%x\n", ght_win->target_win );
+					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+				}
+				break;
+			}		
+			case XCB_DESTROY_NOTIFY : {
+				xcb_destroy_notify_event_t *destroy_evt = 
+					(xcb_destroy_notify_event_t *) event;
+				debug( 1, "Window destroyed 0x%x\n", destroy_evt->window );
+
+				map_entry_t *entry;
+				ght_window_t *ght_win;
+				map_iter_t iter;
+				ght_map_for_each_entry( ghost->win_map, &iter, entry ){
+					/* 
+					 * find and remove entries matching either the window
+					 * or the target window 
+					 */
+					ght_win = (ght_window_t *) entry->value;	
+					if ( ght_win->win == destroy_evt->window ||
+							ght_win->target_win == destroy_evt->window ){
+						debug( 1, "Removing window; win= 0x%x, target_win= 0x%x\n",
+								ght_win->win, ght_win->target_win );
+						free( entry->value );
+						ght_map_remove_entry( ghost->win_map, entry );	
+					}
+				}
+
+				break;
+			}
+		}
+		free( event );
+	}	
 }
 
 
@@ -493,13 +526,18 @@ main(void){
 	debug( 1, "Loading windows...\n" );
 	
 	ght_load_windows( ghost );
-
 		
 	debug( 1, "Done loading windows\n" );	
 
 	debug( 1, "Applying normal opacity rules\n" );
 
 	ght_apply_normal_settings( ghost );
+
+	debug( 1, "Done applying normal settings\n" );
+
+	debug( 1, "Monitoring the window events\n" );
+
+	ght_monitor( ghost );
 	
 	/* destroy the ghost */
 	ght_destroy( ghost );

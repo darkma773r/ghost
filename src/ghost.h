@@ -60,6 +60,9 @@ typedef struct ghost_t {
 	/* the x11 connection */
 	xcb_connection_t *conn;
 
+	/* the x11 root window */
+	xcb_window_t winroot;
+
 	/* the list of rules for applying to windows */
 	list_t rules;
 
@@ -80,11 +83,11 @@ ght_destroy( ghost_t *ghost );
 
 /* Loads rule from the given file. */
 int
-ght_load_rule_file( const char *filepath );
+ght_load_rule_file( ghost_t *ghost, const char *filepath );
 
 /* Loads rule from the given string. */
 int
-ght_load_rule_str( const char *rule );
+ght_load_rule_str( ghost_t *ghost, const char *rule );
 
 /* Searches all x windows for ones matching the rule and adds them to the tracked list. */
 int
@@ -97,6 +100,6 @@ ght_apply_normal_settings( ghost_t *ghost );
 
 /* Enters a loop where x events are tracked and rules applied dynamically. */
 void
-ght_monitor();
+ght_monitor( ghost_t *ghost );
 
 #endif
