@@ -41,6 +41,28 @@ atom_for_name( ghost_t *ghost, const char *name){
 	return result;	
 }
 
+/* 
+ * Looks up the atom with the given name, checking in the cache before making
+ * a call to the X server.
+ */
+static xcb_atom_t
+lookup_atom( ghost_t *ghost, const char *name ){
+	/* debug( 3, "[lookup_atom] Looking up atom with name %s\n", name ); */
+	xcb_atom_t * atom = (xcb_atom_t *) ght_map_get( ghost->atom_cache, (void *) name ); 
+	if ( atom == NULL ){
+		/* debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" ); */
+		/* not found in the cache so look it up */
+		atom = checked_malloc( sizeof( xcb_atom_t ));
+		*atom = atom_for_name( ghost, name );
+		
+		/* store the atom for future use */
+		ght_map_put( ghost->atom_cache, (void *) name, (void *) atom );
+	}
+
+	/* debug( 3, "[lookup_atom] Atom for name %s = 0x%x\n", name, *atom ); */
+	return *atom;
+}
+
 /* Applies the given float opacity to the window. */
 static void 
 apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
@@ -49,7 +71,7 @@ apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
 	xcb_change_property( ghost->conn, /* connection */
 		XCB_PROP_MODE_REPLACE,	/* mode */
 		win->target_win,	/* window */
-		atom_for_name( ghost, OPACITY ), /* atom to change */
+		lookup_atom( ghost, OPACITY ), /* atom to change */
 		XCB_ATOM_CARDINAL,	/* property type */
 		32,	/* format, meaning whether the data should be considered as a list of 8-bit, 16-bit, or 32-bit quantities */
 		1,	/* data length */
@@ -159,28 +181,6 @@ get_top_window( ghost_t *ghost, xcb_window_t win ){
 	}
 
 	return 0;
-}
-
-/* 
- * Looks up the atom with the given name, checking in the cache before making
- * a call to the X server.
- */
-static xcb_atom_t
-lookup_atom( ghost_t *ghost, const char *name ){
-	/* debug( 3, "[lookup_atom] Looking up atom with name %s\n", name ); */
-	xcb_atom_t * atom = (xcb_atom_t *) ght_map_get( ghost->atom_cache, (void *) name ); 
-	if ( atom == NULL ){
-		/* debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" ); */
-		/* not found in the cache so look it up */
-		atom = checked_malloc( sizeof( xcb_atom_t ));
-		*atom = atom_for_name( ghost, name );
-		
-		/* store the atom for future use */
-		ght_map_put( ghost->atom_cache, (void *) name, (void *) atom );
-	}
-
-	/* debug( 3, "[lookup_atom] Atom for name %s = 0x%x\n", name, *atom ); */
-	return *atom;
 }
 
 /* Checks the given window against the rule and returns a configured
