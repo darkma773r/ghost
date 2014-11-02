@@ -90,6 +90,7 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 	}
 
 	if ( reply->type == XCB_ATOM_NONE ){
+		free( reply );
 		return NULL;
 	}
 
@@ -103,6 +104,8 @@ get_string_property( xcb_connection_t *conn, xcb_window_t win, xcb_atom_t prop) 
 	result = checked_malloc( len + 1 );
 
 	strncpy( result, data, len );
+
+	free( reply );
 
 	return result;
 }
@@ -158,12 +161,16 @@ get_top_window( xcb_connection_t *conn, xcb_window_t win ){
 	return 0;
 }
 
+/* 
+ * Looks up the atom with the given name, checking in the cache before making
+ * a call to the X server.
+ */
 static xcb_atom_t
 lookup_atom( ghost_t *ghost, const char *name ){
-	debug( 3, "[lookup_atom] Looking up atom with name %s\n", name ); 
+	/* debug( 3, "[lookup_atom] Looking up atom with name %s\n", name ); */
 	xcb_atom_t * atom = (xcb_atom_t *) ght_map_get( ghost->atom_cache, (void *) name ); 
 	if ( atom == NULL ){
-		debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" );
+		/* debug( 3, "[lookup_atom] Atom not found in cache, looking up\n" ); */
 		/* not found in the cache so look it up */
 		atom = checked_malloc( sizeof( xcb_atom_t ));
 		*atom = atom_for_name( ghost->conn, name );
@@ -172,7 +179,7 @@ lookup_atom( ghost_t *ghost, const char *name ){
 		ght_map_put( ghost->atom_cache, (void *) name, (void *) atom );
 	}
 
-	debug( 3, "[lookup_atom] Atom for name %s = 0x%x\n", name, *atom );
+	/* debug( 3, "[lookup_atom] Atom for name %s = 0x%x\n", name, *atom ); */
 	return *atom;
 }
 
@@ -193,7 +200,6 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
 		matched = win_value != NULL
 			&& strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
 
-		matched = 1;
 		free( win_value );
 
 		if ( !matched ){
@@ -215,7 +221,7 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
 rules */
 static ght_window_t *
 check_window( ghost_t *ghost, xcb_window_t win ){
-	debug( 2, "[check_window] checking window 0x%x\n", win );	
+	/* debug( 2, "[check_window] checking window 0x%x\n", win ); */
 	
 	/* find the first rule that matches */		
 	ght_window_t *ght_win;
@@ -445,9 +451,20 @@ ght_load_windows( ghost_t *ghost ){
 	load_windows_recursive( ghost, winroot );
 } 
 
+int
+ght_apply_normal_settings( ghost_t *ghost ){
+	map_iter_t iter;
+	ght_window_t *win;
+	ght_map_for_each( ghost->win_map, &iter, win, ght_window_t * ){
+		debug(2, "Visiting window; win = 0x%x, target_win = 0x%x\n",
+		    win->win, win->target_win );
+		apply_opacity( ghost->conn, win->target_win, win->normal_opacity );
+	}
+}
+
 
 const char *matcher_class = "WM_CLASS";
-const char *matcher_value = "xterm";
+const char *matcher_value = "thunar";
 
 /* main method for testing purposes */
 int
@@ -479,6 +496,10 @@ main(void){
 
 		
 	debug( 1, "Done loading windows\n" );	
+
+	debug( 1, "Applying normal opacity rules\n" );
+
+	ght_apply_normal_settings( ghost );
 	
 	/* destroy the ghost */
 	ght_destroy( ghost );
