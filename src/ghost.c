@@ -134,12 +134,12 @@ get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
 
 /* Registers this client for events from the given window. */
 static void
-register_for_events( xcb_connection_t *conn, xcb_window_t win, uint32_t events ){
+register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events ){
 	uint32_t values[1];
 	values[0] = events;
 
-	xcb_change_window_attributes( conn, win, XCB_CW_EVENT_MASK, values );
-	xcb_flush( conn );
+	xcb_change_window_attributes( ghost->conn, win, XCB_CW_EVENT_MASK, values );
+	xcb_flush( ghost->conn );
 } 
 
 /* Gets the highest parent window that is not the root */
@@ -413,18 +413,7 @@ ght_apply_normal_settings( ghost_t *ghost ){
 
 void
 ght_monitor( ghost_t *ghost ){
-	/* register to receive new window events */
-	uint32_t event_mask = XCB_CW_EVENT_MASK;
-	uint32_t event_values[2] = {
-		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
-	};
-
-	xcb_change_window_attributes_checked( ghost->conn,
-		ghost->winroot,
-		event_mask,
-		event_values
-	);
-	xcb_flush( ghost->conn );
+	register_for_events( ghost, ghost->winroot, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
 	
 	/* wait for new window events */
 	xcb_generic_event_t *event;
