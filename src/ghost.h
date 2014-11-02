@@ -69,6 +69,8 @@ typedef struct ghost_t {
 	/* Mapping between xcb_window_t and ght_window_t. */
 	map_t *win_map;			
 
+	map_t *target_win_map;
+
 	/* Mapping between string names and xcb_atom_t */
 	map_t *atom_cache;
 } ghost_t;

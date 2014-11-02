@@ -246,10 +246,45 @@ check_window( ghost_t *ghost, xcb_window_t win ){
 	return NULL;
 }
 
-/* Adds the given ght_window_t to the tracked window map, freeing any
+/* Returns the ght_window_t with the given xcb window id or NULL if not found. */
+ght_window_t *
+find_window( ghost_t *ghost, xcb_window_t win ){
+	return (ght_window_t *) ght_map_get( ghost->win_map, &win );
+}
+
+/* Returns the ght_window_t with the given xcb target window is or NULL if not found. */
+ght_window_t *
+find_window_by_target( ghost_t *ghost, xcb_window_t target ){
+	return (ght_window_t *) ght_map_get( ghost->target_win_map, &target );
+}
+
+/* 
+ * Removes the given ght_window_t from the lookup maps and frees its memory.
+ */
+void
+untrack_window( ghost_t *ghost, ght_window_t *ght_win ){
+	if ( ght_win == NULL ){
+		return;
+	}
+
+	/* remove the window from the target map */
+	ght_map_remove( ghost->target_win_map, &(ght_win->target_win));
+
+	/* remove the window from the win map */
+	ght_map_remove( ghost->win_map, &(ght_win->win));
+
+	/* free the window memory */
+	free( ght_win );
+}
+
+/* Adds the given ght_window_t to the tracked window maps, freeing any
 previous entry that may have been there. */
 void
 track_window( ghost_t *ghost, ght_window_t *ght_win ){
+	if ( ght_win == NULL ){
+		return;
+	}
+
 	debug( 2, "[track_window] Adding window to tracked list: "
 		"win=0x%x, target_win=0x%x, "
 		"normal_opacity=%f, focus_opacity=%f\n",
@@ -262,8 +297,35 @@ track_window( ghost_t *ghost, ght_window_t *ght_win ){
 
 	/* free the previous version if we had one */
 	if ( prev != NULL ){
+		ght_map_remove( ghost->target_win_map,
+				&(prev->target_win));
 		free( prev );
 	}
+
+	/* add this entry to the parent window map */
+	ght_map_put( ghost->target_win_map,
+		&(ght_win->target_win),
+		ght_win );
+}
+
+/* 
+ * Changes the parent/target window of the ght_window_t, updating the lookup maps
+ * as needed.
+ */
+void 
+reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent ){
+	if ( ght_win == NULL ){
+		return;
+	}
+
+	/* remove the old entry */
+	ght_map_remove( ghost->target_win_map, &(ght_win->target_win));
+
+	/* set the new value */
+	ght_win->target_win = new_parent;
+
+	/* add the new entry to the target lookup map */
+	ght_map_put( ghost->target_win_map, &new_parent, ght_win );
 }
 
 /* Checks the given window and all child windows recursively. */
@@ -351,6 +413,7 @@ ght_create( const char *displayname, int *screenp ){
 	/* initialize members */
 	ghost->rules = EMPTY_LIST; 
 	ghost->win_map = ght_winmap_create( MAP_SIZE_LG );
+	ghost->target_win_map = ght_winmap_create( MAP_SIZE_LG );
 	ghost->atom_cache = ght_strmap_create( MAP_SIZE_LG );
 
 	/* connect to the x server */
@@ -376,6 +439,11 @@ ght_destroy( ghost_t *ghost ){
 	ght_map_free( ghost->win_map );
 
 	debug( 1, "win map cleared\n" );
+
+	/* clear the target window lookup map */
+	ght_map_free( ghost->target_win_map );
+
+	debug( 1, "target win map cleared\n" );
 
 	/* clear and release the atom cache map */
 	clear_dynamic_map( ghost->atom_cache );
@@ -432,6 +500,8 @@ ght_monitor( ghost_t *ghost ){
 				ght_window_t *ght_win = check_window( ghost, create_evt->window );
 				if ( ght_win != NULL ){
 					track_window( ghost, ght_win );		
+
+					register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
 					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
 				}
 				break;
