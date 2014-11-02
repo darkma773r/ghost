@@ -511,7 +511,10 @@ ght_monitor( ghost_t *ghost ){
 				if ( ght_win != NULL ){
 					track_window( ghost, ght_win );		
 
+					/* register for focus events from the target window */
 					register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
+
+					/* apply the initial normal opacity */
 					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
 				}
 				break;
@@ -525,38 +528,60 @@ ght_monitor( ghost_t *ghost ){
 				debug( 1, "Window reparented! 0x%x\n", reparent_evt->window ); 
 
 				/* check if this is a tracked window */
-				ght_window_t *ght_win = (ght_window_t *) ght_map_get( ghost->win_map, &(reparent_evt->window));	
+				ght_window_t *ght_win = find_window( ghost, reparent_evt->window ); 
 				if ( ght_win != NULL ){
 					debug( 1, "old top window 0x%x\n", ght_win->target_win );
-					ght_win->target_win = get_top_window( ghost, ght_win->win );
+
+					reparent_window( ghost, ght_win, get_top_window( ghost, ght_win->win ));
+
 					debug( 1, "new top window 0x%x\n", ght_win->target_win );
+
+					/* register for focus events from the target window */
+					register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
+
+					/* apply the initial normal opacity */
 					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
 				}
 				break;
 			}		
+			case XCB_FOCUS_IN : {
+				xcb_focus_in_event_t *in = 
+					(xcb_focus_in_event_t *) event;
+				debug( 1, "Focus in 0x%x\n", in->event );
+
+				ght_window_t *ght_win = find_window_by_target( ghost, in->event );
+				if ( ght_win != NULL ){
+					apply_opacity( ghost, ght_win, ght_win->focus_opacity );
+				}
+				break;
+			}
+			case XCB_FOCUS_OUT : {
+				xcb_focus_out_event_t *out = 
+					(xcb_focus_out_event_t *) event;
+				debug( 1, "Focus out 0x%x\n", out->event );
+
+				ght_window_t *ght_win = find_window_by_target( ghost, out->event );
+				if ( ght_win != NULL ){
+					apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+				}
+
+				break;
+			}
 			case XCB_DESTROY_NOTIFY : {
 				xcb_destroy_notify_event_t *destroy_evt = 
 					(xcb_destroy_notify_event_t *) event;
 				debug( 1, "Window destroyed 0x%x\n", destroy_evt->window );
 
-				map_entry_t *entry;
-				ght_window_t *ght_win;
-				map_iter_t iter;
-				ght_map_for_each_entry( ghost->win_map, &iter, entry ){
-					/* 
-					 * find and remove entries matching either the window
-					 * or the target window 
-					 */
-					ght_win = (ght_window_t *) entry->value;	
-					if ( ght_win->win == destroy_evt->window ||
-							ght_win->target_win == destroy_evt->window ){
-						debug( 1, "Removing window; win= 0x%x, target_win= 0x%x\n",
-								ght_win->win, ght_win->target_win );
-						free( entry->value );
-						ght_map_remove_entry( ghost->win_map, entry );	
-					}
+				ght_window_t *ght_win = find_window( ghost, destroy_evt->window );
+				if ( ght_win == NULL ){
+					ght_win = find_window_by_target( ghost, destroy_evt->window );
 				}
 
+				if ( ght_win != NULL ){
+					debug( 1, "Untracking window. win= 0x%x, target_win= 0x%x\n",
+							ght_win->win, ght_win->target_win );
+					untrack_window( ghost, ght_win );
+				}
 				break;
 			}
 		}
