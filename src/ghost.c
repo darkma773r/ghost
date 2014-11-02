@@ -67,7 +67,7 @@ lookup_atom( ghost_t *ghost, const char *name ){
 static void 
 apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
 	uint32_t val = (uint32_t) (opacity * OPAQUE);	
-	debug( 2, "setting opacity for window 0x%x to %d\n", win->target_win, val );
+	debug( 2, "setting opacity for window 0x%x to %d (%f)\n", win->target_win, val, opacity );
 	xcb_change_property( ghost->conn, /* connection */
 		XCB_PROP_MODE_REPLACE,	/* mode */
 		win->target_win,	/* window */
