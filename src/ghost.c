@@ -367,14 +367,18 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 	free( reply );
 }
 
-/* Clears all entries in the given map and releases their memory */
+/* 
+ * Clears all entries in the given map. If free_values is true, the
+ * value memory will also be freed.
+ */
 static void
-clear_dynamic_map( map_t *map ){
-	/* free the dynamic memory */
+clear_dynamic_map( map_t *map, int free_values){
 	map_entry_t *entry;
 	map_iter_t iter;
 	ght_map_for_each_entry( map, &iter, entry ){
-		free( entry->value );
+		if ( free_values ){
+			free( entry->value );
+		}
 		ght_map_remove_entry( map, entry );	
 	} 	
 }
@@ -433,20 +437,25 @@ ght_destroy( ghost_t *ghost ){
 	clear_rule_list( &(ghost->rules) );	
 
 	debug( 1, "rules cleared\n" );
-
-	/* clear and release the window map */	
-	clear_dynamic_map( ghost->win_map );
-	ght_map_free( ghost->win_map );
-
-	debug( 1, "win map cleared\n" );
-
-	/* clear the target window lookup map */
+	
+	/* 
+	 * Clear the target window lookup map.
+	 * Dont' free the values here since they'll
+	 * be freed through the win_map.
+	 */
+	clear_dynamic_map( ghost->target_win_map, 0 );
 	ght_map_free( ghost->target_win_map );
 
 	debug( 1, "target win map cleared\n" );
 
+	/* clear and release the window map */	
+	clear_dynamic_map( ghost->win_map, 1 );
+	ght_map_free( ghost->win_map );
+
+	debug( 1, "win map cleared\n" );
+
 	/* clear and release the atom cache map */
-	clear_dynamic_map( ghost->atom_cache );
+	clear_dynamic_map( ghost->atom_cache, 1 );
 	ght_map_free( ghost->atom_cache );
 
 	debug( 1, "atom cache cleared\n" );
@@ -459,8 +468,9 @@ ght_destroy( ghost_t *ghost ){
 
 int
 ght_load_windows( ghost_t *ghost ){
-	/* clear the current map */
-	clear_dynamic_map( ghost->win_map );
+	/* clear the current maps */
+	clear_dynamic_map( ghost->target_win_map, 0 );
+	clear_dynamic_map( ghost->win_map, 1 );
 	
 	/* get the root window */	
 	const xcb_setup_t *setup = xcb_get_setup( ghost->conn );
