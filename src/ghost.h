@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <xcb/xcb.h>
 #include "ghost_data.h"
 
@@ -48,7 +49,9 @@
 /* the maximum string length allowed in rule matching operations. */
 #define MAX_STR_LEN 128
 
-/* Primary struct for tracking windows in ghost */
+/**
+ * Primary struct for tracking windows in ghost.
+ */
 typedef struct ght_window_t {
 	/* the window monitored by ghost */
 	xcb_window_t win;
@@ -59,9 +62,13 @@ typedef struct ght_window_t {
 	/* opacity settings */
 	float focus_opacity;
 	float normal_opacity;
+
 } ght_window_t;
 
-/* Contains a name-value pair (with the name as an atom) for matching against string window properties */
+/**
+ * Contains a name-value pair (with the name as an atom) for matching
+ * against string window properties.
+ */
 typedef struct ght_matcher_t {
     /* The x11 atom to match against */
 	xcb_atom_t name_atom;
@@ -73,6 +80,10 @@ typedef struct ght_matcher_t {
 	list_node_t node;
 } ght_matcher_t;
 
+/**
+ * Contains a list of matchers and a set of opacity settings to apply
+ * to matched windows.
+ */
 typedef struct ght_rule_t {
 	/* list of matchers */
 	list_t matchers;
@@ -85,6 +96,9 @@ typedef struct ght_rule_t {
 	list_node_t node;
 } ght_rule_t;
 
+/**
+ * Primary ghost structure.
+ */
 typedef struct ghost_t {
 	/* the x11 connection */
 	xcb_connection_t *conn;
@@ -109,32 +123,53 @@ typedef struct ghost_t {
 	map_t *target_win_map;
 } ghost_t;
 
-/* Creates a new ghost object. */
+/**
+ * Creates and initializes a new ghost object.
+ */
 ghost_t *
 ght_create( const char *displayname, int *screenp );
 
-/* Destroys the given ghost object and frees its memory. */
+/**
+ * Destroys the given ghost object and frees its memory.
+ */
 void
 ght_destroy( ghost_t *ghost );
 
-/* Loads rule from the given file. */
-int
+/**
+ * Loads rules from the given file. Returns a boolean indicating
+ * whether or not the operation succeeded.
+ */
+bool
 ght_load_rule_file( ghost_t *ghost, const char *filepath );
 
-/* Loads rule from the given string. */
-int
+/**
+ * Loads rule from the given string. Returns a boolean indicating
+ * whether or not the operation succeeded.
+ */
+bool
 ght_load_rule_str( ghost_t *ghost, const char *rule );
 
-/* Searches all x windows for ones matching the rule and adds them to the tracked list. */
-int
+/**
+ * Searches all existing x windows for ones matching the rulea and
+ * adds them to the tracked list.
+ */
+void
 ght_load_windows( ghost_t *ghost );
 
-/* Applies the normal rules in this ghost object to tracked windows. Focused and
-unfocused states are not considered. */
-int
-ght_apply_normal_settings( ghost_t *ghost );
+/**
+ * Applies opacity settings to the current set of tracked windows. If
+ * consider_focus_states is true, then the current window with the input
+ * focus will use the focus_opacity setting while all other windows will
+ * receive the normal_opacity setting. If false, all windows will receive
+ * the normal_opacity setting.
+ */
+void
+ght_apply_opacity_settings( ghost_t *ghost, bool consider_focus_states );
 
-/* Enters a loop where x events are tracked and rules applied dynamically. */
+/**
+ * Enters a loop where x events are tracked and rules applied dynamically.
+ * This function does not return.
+ */
 void
 ght_monitor( ghost_t *ghost );
 

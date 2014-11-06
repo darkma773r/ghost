@@ -4,7 +4,6 @@
  */
 
 #include <string.h>
-#include <stdbool.h>
 
 #define LOG_LEVEL 4
 
@@ -16,7 +15,7 @@
 /* ################ Helper functions ################### */
 
 /**
- * Returns an atom for the given name
+ * Returns an atom for the given name.
  */
 static xcb_atom_t
 atom_for_name( ghost_t *ghost, const char *name){
@@ -47,7 +46,9 @@ atom_for_name( ghost_t *ghost, const char *name){
     return result;
 }
 
-/* Applies the given float opacity to the window. */
+/**
+ * Applies the given float opacity to the window.
+ */
 static void
 apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
     uint32_t val = (uint32_t) (opacity * OPAQUE);
@@ -66,8 +67,10 @@ apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
     xcb_flush( ghost->conn );
 }
 
-/* Returns a string property for the given window. The returned string must be
-freed by the caller. */
+/**
+ * Returns a string property for the given window. The returned string must be
+ * freed by the caller.
+ */
 static char *
 get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
     xcb_get_property_cookie_t prop_cookie;
@@ -118,7 +121,37 @@ get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
     return result;
 }
 
-/* Registers this client for events from the given window. */
+/**
+ * Returns the xcb_window_t with the current input focus or 0
+ * if it cannot be determined.
+ */
+static xcb_window_t
+get_focused_window( ghost_t *ghost ){
+    xcb_get_input_focus_cookie_t cookie;
+    xcb_get_input_focus_reply_t *reply;
+    xcb_window_t focused_window;
+
+    cookie = xcb_get_input_focus( ghost->conn );
+
+    reply = xcb_get_input_focus_reply( ghost->conn, cookie, NULL );
+
+    if ( !reply ){
+        warn( "Unable to determine current focused window\n" );
+        return 0;
+    }
+
+    focused_window = reply->focus;
+
+    free( reply );
+
+    debug( "Found focused window: 0x%x\n", focused_window );
+
+    return focused_window;
+}
+
+/**
+ * Registers this client for events from the given window.
+ */
 static void
 register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events ){
     uint32_t values[1];
@@ -128,7 +161,9 @@ register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events ){
     xcb_flush( ghost->conn );
 }
 
-/* Gets the highest parent window that is not the root */
+/**
+ * Gets the highest parent window that is not the root
+ */
 static xcb_window_t
 get_top_window( ghost_t *ghost, xcb_window_t win ){
     xcb_window_t current;
@@ -169,9 +204,11 @@ get_top_window( ghost_t *ghost, xcb_window_t win ){
     return 0;
 }
 
-/* Checks the given window against the rule and returns a configured
-ght_window_t pointer if the window matches the rule. The caller is responsible
-for freeing the ght_window_t memory. */
+/**
+ * Checks the given window against the rule and returns a configured
+ * ght_window_t pointer if the window matches the rule. The caller is responsible
+ * for freeing the ght_window_t memory.
+ */
 static ght_window_t *
 check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
     /* go through each matcher in the rule to see if they all match */
@@ -203,8 +240,10 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
     return ght_win;
 }
 
-/* Returns a new ght_window_t if this window matches one of the configured
-rules */
+/**
+ * Returns a new ght_window_t if this window matches one of the configured
+ * rules.
+ */
 static ght_window_t *
 check_window( ghost_t *ghost, xcb_window_t win ){
     /* find the first rule that matches */
@@ -229,22 +268,27 @@ check_window( ghost_t *ghost, xcb_window_t win ){
     return NULL;
 }
 
-/* Returns the ght_window_t with the given xcb window id or NULL if not found. */
-ght_window_t *
+/**
+ * Returns the ght_window_t with the given xcb window id or NULL if not found.
+ */
+static ght_window_t *
 find_window( ghost_t *ghost, xcb_window_t win ){
     return (ght_window_t *) ght_map_get( ghost->win_map, &win );
 }
 
-/* Returns the ght_window_t with the given xcb target window or NULL if not found. */
-ght_window_t *
+/**
+ * Returns the ght_window_t with the given xcb target window or NULL if not found.
+ * ght_window_t *.
+ */
+static ght_window_t *
 find_window_by_target( ghost_t *ghost, xcb_window_t target ){
     return (ght_window_t *) ght_map_get( ghost->target_win_map, &target );
 }
 
-/*
+/**
  * Removes the given ght_window_t from the lookup maps and frees its memory.
  */
-void
+static void
 untrack_window( ghost_t *ghost, ght_window_t *ght_win ){
     if ( ght_win == NULL ){
         return;
@@ -260,9 +304,11 @@ untrack_window( ghost_t *ghost, ght_window_t *ght_win ){
     free( ght_win );
 }
 
-/* Adds the given ght_window_t to the tracked window maps, freeing any
-previous entry that may have been there. */
-void
+/**
+ * Adds the given ght_window_t to the tracked window maps, freeing any
+ * previous entry that may have been there.
+ */
+static void
 track_window( ghost_t *ghost, ght_window_t *ght_win ){
     if ( ght_win == NULL ){
         return;
@@ -291,7 +337,7 @@ track_window( ghost_t *ghost, ght_window_t *ght_win ){
         ght_win );
 }
 
-/*
+/**
  * Changes the parent/target window of the ght_window_t, updating the lookup maps
  * as needed.
  */
@@ -311,7 +357,9 @@ reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent 
     ght_map_put( ghost->target_win_map, &new_parent, ght_win );
 }
 
-/* Checks the given window and all child windows recursively. */
+/**
+ * Checks the given window and all child windows recursively.
+ */
 void
 load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
     xcb_query_tree_cookie_t tree_cookie;
@@ -350,7 +398,7 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
     free( reply );
 }
 
-/*
+/**
  * Clears all entries in the given map. If free_values is true, the
  * value memory will also be freed.
  */
@@ -366,7 +414,9 @@ clear_dynamic_map( map_t *map, bool free_values){
     }
 }
 
-/* Clears and frees all memory associated with a list of matchers */
+/**
+ * Clears and frees all memory associated with a list of matchers.
+ */
 static void
 clear_matcher_list( list_t *matcher_list){
     list_iter_t iter;
@@ -377,7 +427,9 @@ clear_matcher_list( list_t *matcher_list){
     }
 }
 
-/* Clears and frees all memory associated with a list of rules */
+/**
+ * Clears and frees all memory associated with a list of rules.
+ */
 static void
 clear_rule_list( list_t *rule_list ){
     list_iter_t iter;
@@ -450,7 +502,7 @@ ght_destroy( ghost_t *ghost ){
     debug( "ghost cleared\n" );
 }
 
-int
+void
 ght_load_windows( ghost_t *ghost ){
     /* clear the current maps */
     clear_dynamic_map( ghost->target_win_map, 0 );
@@ -460,18 +512,38 @@ ght_load_windows( ghost_t *ghost ){
     load_windows_recursive( ghost, ghost->winroot );
 }
 
-int
-ght_apply_normal_settings( ghost_t *ghost ){
+void
+ght_apply_opacity_settings( ghost_t *ghost, bool consider_focused_states ){
+    xcb_window_t focus = 0;
+    float opacity;
     map_iter_t iter;
     ght_window_t *ght_win;
+
+    if ( consider_focused_states ){
+        focus = get_focused_window( ghost );
+    }
+
     ght_map_for_each( ghost->win_map, &iter, ght_win, ght_window_t * ){
-        apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+        /* decide if we should use the normal or focused opacity setting */
+        opacity = ght_win->normal_opacity;
+        if ( focus == ght_win->win || focus == ght_win->target_win ){
+            opacity = ght_win->focus_opacity;
+        }
+
+        apply_opacity( ghost, ght_win, opacity );
     }
 }
 
 void
 ght_monitor( ghost_t *ghost ){
     register_for_events( ghost, ghost->winroot, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
+
+    /* go through any existing windows and register for their events */
+    ght_window_t *existing_win;
+    map_iter_t iter;
+    ght_map_for_each( ghost->win_map, &iter, existing_win, ght_window_t * ){
+        register_for_events( ghost, existing_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
+    }
 
     /* wait for new window events */
     xcb_generic_event_t *event;
@@ -606,7 +678,7 @@ main(void){
 
     info( "Applying normal opacity rules\n" );
 
-    ght_apply_normal_settings( ghost );
+    ght_apply_opacity_settings( ghost, true );
 
     info( "Done applying normal settings\n" );
 
