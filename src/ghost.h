@@ -10,16 +10,42 @@
 #include <xcb/xcb.h>
 #include "ghost_data.h"
 
-/* debug levels
-0 - none
-1 - info
-2 - debug
-*/
-#define DEBUG_LEVEL 3 
-#define debug( LEVEL, ...) if ( LEVEL <= DEBUG_LEVEL ) { printf( __VA_ARGS__ ); }
+/* Logging macros */
+#define LOG_LEVEL_NONE 0
+#define LOG_LEVEL_ERROR 1
+#define LOG_LEVEL_WARN 2
+#define LOG_LEVEL_INFO 3
+#define LOG_LEVEL_DEBUG 4
 
-#define error( ... ) fprintf( stderr, __VA_ARGS__ );
+#ifndef LOG_LEVEL
+    #define LOG_LEVEL LOG_LEVEL_DEBUG
+#endif
 
+#if LOG_LEVEL >= LOG_LEVEL_ERROR
+    #define error( ... ) fprintf( stderr, __VA_ARGS__ );
+#else
+    #define error( ... )
+#endif
+
+#if LOG_LEVEL >= LOG_LEVEL_WARN
+    #define warn( ... ) fprintf( stderr, __VA_ARGS__ );
+#else
+    #define warn( ... )
+#endif
+
+#if LOG_LEVEL >= LOG_LEVEL_INFO
+    #define info( ... ) fprintf( stdout, __VA_ARGS__ );
+#else
+    #define info( ... )
+#endif
+
+#if LOG_LEVEL >= LOG_LEVEL_DEBUG
+    #define debug( ... ) fprintf( stdout, __VA_ARGS__ );
+#else
+    #define debug( ... )
+#endif
+
+/* the maximum string length allowed in rule matching operations. */
 #define MAX_STR_LEN 128
 
 /* Primary struct for tracking windows in ghost */
@@ -35,10 +61,13 @@ typedef struct ght_window_t {
 	float normal_opacity;
 } ght_window_t;
 
-/* Contains a name-value pair for matching against string window properties */
+/* Contains a name-value pair (with the name as an atom) for matching against string window properties */
 typedef struct ght_matcher_t {
-	char name[MAX_STR_LEN];
-	char value[MAX_STR_LEN]; 
+    /* The x11 atom to match against */
+	xcb_atom_t name_atom;
+
+	/* The value to match against */
+	char value[MAX_STR_LEN];
 
 	/* required for use in lists */
 	list_node_t node;
@@ -63,16 +92,21 @@ typedef struct ghost_t {
 	/* the x11 root window */
 	xcb_window_t winroot;
 
+	/* the opacity atom */
+	xcb_atom_t opacity_atom;
+
 	/* the list of rules for applying to windows */
 	list_t rules;
 
-	/* Mapping between xcb_window_t and ght_window_t. */
-	map_t *win_map;			
+	/* Mapping between xcb_window_t and ght_window_t to keep track
+	of the initial windows that matched the ghost rules. */
+	map_t *win_map;
 
+    /* Mapping between xcb_window_t and ght_window_t for quick lookups
+    of ght_window_t by their target windows (ie the window that receives
+    the opacity settings). This map refers to the same instances as win_map
+    so the ght_window_t memory locations should only be freed once. */
 	map_t *target_win_map;
-
-	/* Mapping between string names and xcb_atom_t */
-	map_t *atom_cache;
 } ghost_t;
 
 /* Creates a new ghost object. */
