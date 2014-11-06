@@ -2,7 +2,7 @@
  * Data structures for use in ghost.
  */
 
-#include "ghost_data.h" 
+#include "ghost_data.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,8 +16,8 @@ checked_malloc( size_t size ){
 		fprintf( stderr,
 			"Fatal Error: Failed to allocate dynamic memory!\n" );
 		exit( 1 );
-	}	
-	
+	}
+
 	return result;
 }
 
@@ -41,7 +41,7 @@ ght_list_push_node( list_t *list, list_node_t *node ){
 void
 ght_list_remove_node( list_t *list, list_node_t *node ){
 	if ( list->head == node ){
-		list->head = node->next;		
+		list->head = node->next;
 	}
 	if ( list->tail == node ){
 		list->tail = node->prev;
@@ -57,7 +57,7 @@ ght_list_remove_node( list_t *list, list_node_t *node ){
 
 list_node_t *
 ght_list_iter_init( list_t *list, list_iter_t *iter ){
-	iter->next = list->head;	
+	iter->next = list->head;
 	return ght_list_iter_next( iter );
 }
 
@@ -66,17 +66,17 @@ ght_list_iter_next( list_iter_t *iter ) {
 	iter->current = iter->next;
 	if ( iter->current != NULL ){
 		iter->next = iter->current->next;
-	}	
+	}
 	return iter->current;
 }
 
 /* ########################## MAPS ###################### */
 
 /* Helper function for creating a map_entry_t element. */
-static map_entry_t * 
+static map_entry_t *
 ght_map_create_entry( map_t *map, void *key, void *value ){
 	map_entry_t *entry = (map_entry_t *) checked_malloc( sizeof( map_entry_t ));
-	
+
 	/* The key_copy function is expected to allocate dynamic memory for the
 	key. This will be freed later in ght_map_free_entry. */
 	entry->key = map->key_copy( key );
@@ -104,7 +104,7 @@ ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_f
 	map_t *map = (map_t *) checked_malloc( sizeof( map_t ));
 	memset( map, 0, sizeof( map_t ));
 
-	/* allocate and zero the bucket array */ 
+	/* allocate and zero the bucket array */
 	map->buckets = (list_t *) malloc( buckets_size * sizeof( list_t ));
 	memset( map->buckets, 0, buckets_size * sizeof( list_t ));
 
@@ -113,7 +113,7 @@ ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_f
 
 	map->key_hash = key_hash;
 	map->key_equals = key_equals;
-	map->key_copy = key_copy; 
+	map->key_copy = key_copy;
 
 	return map;
 }
@@ -124,9 +124,9 @@ ght_map_free( map_t *map ){
 	map_iter_t iter;
 	map_entry_t *entry;
 	ght_map_for_each_entry( map, &iter, entry ){
-		ght_map_remove_entry( map, entry ); 
+		ght_map_remove_entry( map, entry );
 	}
-	
+
 	/* free all of the bucket lists */
 	free( map->buckets );
 
@@ -136,7 +136,7 @@ ght_map_free( map_t *map ){
 
 void *
 ght_map_put( map_t *map, void *key, void *value ){
-	int idx = ght_map_hash_idx( map, key ); 
+	int idx = ght_map_hash_idx( map, key );
 
 	/* check if we have an entry for this already */
 	map_entry_t *entry;
@@ -147,14 +147,14 @@ ght_map_put( map_t *map, void *key, void *value ){
 			the value and return the old value. */
 			old_value = entry->value;
 			entry->value = value;
-			return old_value;		
+			return old_value;
 		}
 	}
 
 	/* no existing entry :-( I guess we'll need to make a new one. */
 	entry = ght_map_create_entry( map, key, value );
 
-	ght_list_push( &(map->buckets[idx]), entry ); 
+	ght_list_push( &(map->buckets[idx]), entry );
 
 	return NULL; /* return NULL to signal that we didn't replace an
 		existing entry */
@@ -162,7 +162,7 @@ ght_map_put( map_t *map, void *key, void *value ){
 
 void *
 ght_map_get( map_t *map, void *key ){
-	map_entry_t *entry = ght_map_get_entry( map, key );	
+	map_entry_t *entry = ght_map_get_entry( map, key );
 	return entry != NULL ? entry->value : NULL;
 }
 
@@ -175,7 +175,7 @@ ght_map_get_entry( map_t *map, void *key ){
 		if ( map->key_equals( key, entry->key )){
 			return entry;
 		}
-	}	
+	}
 	return NULL;
 }
 
@@ -194,14 +194,14 @@ ght_map_remove_entry( map_t *map, map_entry_t *entry ){
 	void *value = entry->value;
 
 	/* get the list containing this entry */
-	int idx = ght_map_hash_idx( map, entry->key );		
+	int idx = ght_map_hash_idx( map, entry->key );
 	list_t *list = &(map->buckets[idx]);
 
 	/* remove the entry from the list */
 	ght_list_remove( list, entry );
 
 	/* free the memory */
-	ght_map_free_entry( entry );	
+	ght_map_free_entry( entry );
 
 	return value;
 }
@@ -222,7 +222,7 @@ ght_map_iter_init( map_t *map, map_iter_t *iter ){
 	iter->list_iter.current = NULL;
 
 	/* get the next available entry */
-	return ght_map_iter_next( iter ); 
+	return ght_map_iter_next( iter );
 }
 
 map_entry_t *
@@ -233,19 +233,19 @@ ght_map_iter_next( map_iter_t *iter ){
 	if ( list_node == NULL ){
 		/* nothing in the current list, try other buckets */
 		iter->bucket_idx++;
-		for (;iter->bucket_idx < iter->map->buckets_size; 
+		for (;iter->bucket_idx < iter->map->buckets_size;
 			iter->bucket_idx++){
 
-			list_node = ght_list_iter_init( 
+			list_node = ght_list_iter_init(
 				&(iter->map->buckets[iter->bucket_idx]),
-				&(iter->list_iter) );	
+				&(iter->list_iter) );
 			if ( list_node != NULL ){
 				break;
 			}
 		}
 	}
-	
-	if ( list_node != NULL ){	
+
+	if ( list_node != NULL ){
 		iter->current = container_of( list_node, map_entry_t, node );
 	} else {
 		iter->current = NULL;
@@ -259,9 +259,9 @@ ght_map_iter_next( map_iter_t *iter ){
 
 unsigned int
 ght_strmap_key_hash( void *key ){
-	/* Using the djb2 hash algorithm here. Thank you, Daniel J Bernstein! */ 
+	/* Using the djb2 hash algorithm here. Thank you, Daniel J Bernstein! */
 	char *char_key = (char *) key;
-	
+
 	unsigned int hash = 5381, c;
 	while ( c = *char_key++ ){
 		hash = (( hash << 5 ) + hash ) + c;
@@ -282,14 +282,14 @@ ght_strmap_key_copy( void *key ){
 
 	char * copy = (char *) checked_malloc( len + 1 );
 	strncpy( copy, char_key, len );
-	copy[len] = '\0'; 
+	copy[len] = '\0';
 
 	return copy;
 }
 
 map_t *
 ght_strmap_create( int buckets_size ){
-	return ght_map_create( buckets_size, 
+	return ght_map_create( buckets_size,
 		ght_strmap_key_hash,
 		ght_strmap_key_equals,
 		ght_strmap_key_copy);
@@ -312,7 +312,7 @@ ght_winmap_key_copy( void *key ){
 	xcb_window_t *win_key = (xcb_window_t *) key;
 
 	xcb_window_t *copy = (xcb_window_t *) checked_malloc( sizeof( xcb_window_t ));
-	
+
 	*copy = *win_key;
 
 	return copy;

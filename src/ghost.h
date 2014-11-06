@@ -47,7 +47,7 @@
 #endif
 
 /* the maximum string length allowed in rule matching operations. */
-#define MAX_STR_LEN 128
+#define MAX_STR_LEN 64
 
 /**
  * Primary struct for tracking windows in ghost.
@@ -66,11 +66,11 @@ typedef struct ght_window_t {
 } ght_window_t;
 
 /**
- * Contains a name-value pair (with the name as an atom) for matching
+ * Contains a name-value pair for matching
  * against string window properties.
  */
 typedef struct ght_matcher_t {
-    /* The x11 atom to match against */
+    /* The x11 atom corresponding */
 	xcb_atom_t name_atom;
 
 	/* The value to match against */

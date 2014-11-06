@@ -1,12 +1,9 @@
 /* ghost.c
  *
- * A simple program to apply transparency to windows in the X11 windowing system.
+ * Primary ghost application logic.
  */
 
 #include <string.h>
-
-#define LOG_LEVEL 4
-
 #include "ghost.h"
 
 #define OPAQUE 0xffffffff
@@ -17,7 +14,7 @@
 /**
  * Returns an atom for the given name.
  */
-static xcb_atom_t
+xcb_atom_t
 atom_for_name( ghost_t *ghost, const char *name){
     xcb_intern_atom_cookie_t cookie;
     xcb_intern_atom_reply_t *reply;
@@ -639,57 +636,4 @@ ght_monitor( ghost_t *ghost ){
         }
         free( event );
     }
-}
-
-
-const char *matcher_class = "WM_CLASS";
-const char *matcher_value = "xterm";
-
-/* main method for testing purposes */
-int
-main(void){
-    info( "Starting ghost\n" );
-    /* create the ghost */
-    ghost_t *ghost = ght_create( NULL, NULL );
-
-    info( "Created ghost. conn=0x%x\n", ghost->conn );
-
-    /* adding criteria */
-    ght_matcher_t *xterm = checked_malloc( sizeof( ght_matcher_t ));
-    xterm->name_atom = atom_for_name( ghost, matcher_class );
-    info( "xterm name atom = 0x%x\n", xterm->name_atom );
-    strcpy( xterm->value, matcher_value );
-
-    ght_rule_t *rule = checked_malloc( sizeof( ght_rule_t ));
-    rule->matchers = EMPTY_LIST;
-    rule->focus_opacity = 0.8f;
-    rule->normal_opacity = 0.7f;
-
-    ght_list_push( &(rule->matchers), xterm );
-
-    ght_list_push( &(ghost->rules), rule );
-
-    /* loading windows */
-    info( "Loading windows...\n" );
-
-    ght_load_windows( ghost );
-
-    info( "Done loading windows\n" );
-
-    info( "Applying normal opacity rules\n" );
-
-    ght_apply_opacity_settings( ghost, true );
-
-    info( "Done applying normal settings\n" );
-
-    info( "Monitoring the window events\n" );
-
-    ght_monitor( ghost );
-
-    /* destroy the ghost */
-    ght_destroy( ghost );
-
-    info( "Ghost destroyed\n" );
-
-    return EXIT_SUCCESS;
 }

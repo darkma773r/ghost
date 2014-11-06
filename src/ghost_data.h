@@ -31,31 +31,31 @@ member named "node". */
 #define ght_list_push( LIST_PTR, ELEM_PTR ) \
 	( ght_list_push_node( LIST_PTR, &((ELEM_PTR)->node) ))
 
-/* Macro for removing elements from a list. The 
+/* Macro for removing elements from a list. The
 structure pointed to by ELEM_PTR is expected to have a list_node_t
 member named "node". */
 #define ght_list_remove( LIST_PTR, ELEM_PTR ) \
 	( ght_list_remove_node( LIST_PTR, &((ELEM_PTR)->node) ))
 
-/* Macro for iterating over list elements. LIST_PTR must a a pointer to 
+/* Macro for iterating over list elements. LIST_PTR must a a pointer to
 a list_t structure, ELEM_PTR_VAR must be an assignable variable in the
-current scope of type TYPE *, and TYPE should be the type of the 
+current scope of type TYPE *, and TYPE should be the type of the
 elements in the list. */
 #define ght_list_for_each( LIST_PTR, ELEM_PTR_VAR, TYPE ) \
 	for ( ELEM_PTR_VAR = container_of( (LIST_PTR)->head, TYPE, node );\
 		ELEM_PTR_VAR != NULL;\
-		ELEM_PTR_VAR = container_of( (ELEM_PTR_VAR)->node.next, TYPE, node))   
+		ELEM_PTR_VAR = container_of( (ELEM_PTR_VAR)->node.next, TYPE, node))
 
 /* Macro for iterating over list elements in such a way as to allow
-the list elements to be removed and their memory freed as the list 
-is tranversed. This macro is less efficient than ght_list_for_each and 
+the list elements to be removed and their memory freed as the list
+is tranversed. This macro is less efficient than ght_list_for_each and
 should only be used when items may need to be removed. */
 #define ght_list_mod_for_each( LIST_PTR, ITER_PTR, ELEM_PTR_VAR, TYPE )\
 	for ( ght_list_iter_init( (LIST_PTR), (ITER_PTR) ), \
 		ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node );\
 		ELEM_PTR_VAR != NULL;\
 		ght_list_iter_next( &iter ), \
-		ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node )) 
+		ELEM_PTR_VAR = container_of( (ITER_PTR)->current, TYPE, node ))
 
 /* List node structure. Structures that will be stored in
 lists should include this as a member named "node". */
@@ -85,13 +85,13 @@ belong to the given list or the structure will become corrupted. */
 void
 ght_list_remove_node( list_t *list, list_node_t *node );
 
-/* Initializes the iterator to the start of the given list. The iterator's 
-current pointer will point to the head of the list. A pointer to the 
+/* Initializes the iterator to the start of the given list. The iterator's
+current pointer will point to the head of the list. A pointer to the
 current node is returned. */
 list_node_t *
 ght_list_iter_init( list_t *list, list_iter_t *iter );
 
-/* Advances the iterator to the next node and returns a pointer to 
+/* Advances the iterator to the next node and returns a pointer to
 the current node. */
 list_node_t *
 ght_list_iter_next( list_iter_t *iter );
@@ -100,7 +100,7 @@ ght_list_iter_next( list_iter_t *iter );
 
 /* Pre-defined, prime map bucket array sizes */
 #define MAP_SIZE_SM 17
-#define MAP_SIZE_MD 83 
+#define MAP_SIZE_MD 83
 #define MAP_SIZE_LG 257
 
 /* Macro for calculating the hash bucket index from the key */
@@ -112,7 +112,7 @@ ght_list_iter_next( list_iter_t *iter );
 	for ( ENTRY_PTR_VAR = ght_map_iter_init( (MAP_PTR), (ITER_PTR) ); \
 		ENTRY_PTR_VAR != NULL; \
 		ENTRY_PTR_VAR = ght_map_iter_next( (ITER_PTR ) ))
-		
+
 /* macro for iterating over the values in a map. Note that the values may be null. */
 #define ght_map_for_each( MAP_PTR, ITER_PTR, VALUE_PTR_VAR, VALUE_PTR_TYPE ) \
 	for ( ght_map_iter_init( (MAP_PTR), (ITER_PTR) ), \
@@ -120,7 +120,7 @@ ght_list_iter_next( list_iter_t *iter );
 		(ITER_PTR)->current != NULL; \
 		ght_map_iter_next( (ITER_PTR ) ), \
 		VALUE_PTR_VAR = (ITER_PTR)->current != NULL ? (VALUE_PTR_TYPE)((ITER_PTR)->current->value) : NULL )
-	
+
 
 /* Map helper function for computing a key hash value */
 typedef unsigned int (*hash_fn)( void *key );
@@ -146,9 +146,9 @@ typedef struct map_entry_t {
 
 /* Struct containing top-level map elements */
 typedef struct map_t {
-	int buckets_size; /* the size of the hash bucket array */ 
+	int buckets_size; /* the size of the hash bucket array */
 	list_t *buckets; /* the hash bucket array; each bucket
-		contains a list of map_entry_t structs */	
+		contains a list of map_entry_t structs */
 	hash_fn key_hash; /* function for hashing keys */
 	equals_fn key_equals; /* function for testing if two keys are equal. */
 	copy_fn key_copy; /* function for copying keys */
@@ -157,12 +157,12 @@ typedef struct map_t {
 /* Struct for iterating over a map */
 typedef struct map_iter_t {
 	map_t *map; /* the map being iterated over */
-	int bucket_idx; /* the index of the bucket we're on */	
+	int bucket_idx; /* the index of the bucket we're on */
 	map_entry_t *current; /* the current entry */
 	list_iter_t list_iter; /* the current list iterator */
 } map_iter_t;
 
-/* Creates a new map with the given size and helper functions. 
+/* Creates a new map with the given size and helper functions.
 The buckets_size should be a prime number. */
 map_t *
 ght_map_create( int buckets_size, hash_fn key_hash, equals_fn key_equals, copy_fn key_copy );
@@ -204,15 +204,15 @@ ght_map_remove( map_t *map, void *key );
 map entry and key is freed but the memory for the entry value
 must be freed by the caller. */
 void *
-ght_map_remove_entry( map_t *map, map_entry_t *entry ); 
+ght_map_remove_entry( map_t *map, map_entry_t *entry );
 
-/* Initializes the given map iterator and returns a pointer to 
+/* Initializes the given map iterator and returns a pointer to
 the first available map_entry_t. */
 map_entry_t *
 ght_map_iter_init( map_t *map, map_iter_t *iter );
 
 /* Moves the map iterator to the next available map_entry_t and
-returns a pointer to it. */ 
+returns a pointer to it. */
 map_entry_t *
 ght_map_iter_next( map_iter_t *iter );
 
