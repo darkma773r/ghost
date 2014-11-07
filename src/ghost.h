@@ -70,7 +70,10 @@ typedef struct ght_window_t {
  * against string window properties.
  */
 typedef struct ght_matcher_t {
-    /* The x11 atom corresponding */
+    /* The name of the X11 property to use in the match */
+    char name[MAX_STR_LEN];
+
+    /* The x11 atom corresponding to the matcher name */
 	xcb_atom_t name_atom;
 
 	/* The value to match against */
@@ -140,14 +143,14 @@ ght_destroy( ghost_t *ghost );
  * whether or not the operation succeeded.
  */
 bool
-ght_load_rule_file( ghost_t *ghost, const char *filepath );
+ght_load_rule_file( ghost_t *ghost, char *filepath );
 
 /**
  * Loads rule from the given string. Returns a boolean indicating
  * whether or not the operation succeeded.
  */
 bool
-ght_load_rule_str( ghost_t *ghost, const char *rule );
+ght_load_rule_str( ghost_t *ghost, char *rule );
 
 /**
  * Searches all existing x windows for ones matching the rulea and

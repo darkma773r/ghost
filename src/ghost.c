@@ -5,6 +5,8 @@
 
 #include <string.h>
 #include "ghost.h"
+#include "ghost_data.h"
+#include "ghost_parser.h"
 
 #define OPAQUE 0xffffffff
 #define OPACITY "_NET_WM_WINDOW_OPACITY"
@@ -497,6 +499,24 @@ ght_destroy( ghost_t *ghost ){
     free( ghost );
 
     debug( "ghost cleared\n" );
+}
+
+bool
+ght_load_rule_file( ghost_t *ghost, char *filepath ){
+    /* clear the rules list */
+    clear_rule_list( &(ghost->rules) );
+
+    /* load the new rules */
+    return ght_parse_rules_from_file( filepath, &(ghost->rules) );
+}
+
+bool
+ght_load_rule_str( ghost_t *ghost, char *rule ){
+    /* clear the rules list */
+    clear_rule_list( &(ghost->rules) );
+
+    /* load the new rules */
+    return ght_parse_rules_from_string( rule, &(ghost->rules) );
 }
 
 void
