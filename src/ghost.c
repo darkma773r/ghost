@@ -13,27 +13,28 @@
 
 /* ################ Helper functions ################### */
 
-/**
+/*
  * Returns an atom for the given name.
  */
 xcb_atom_t
-atom_for_name( ghost_t *ghost, const char *name){
+atom_for_name( ghost_t *ghost, const char *name)
+{
     xcb_intern_atom_cookie_t cookie;
     xcb_intern_atom_reply_t *reply;
     xcb_atom_t result;
 
     cookie = xcb_intern_atom( ghost->conn,
-        0, /* only_if_exists; set to false to create the atom if needed */
-        strlen(name), /* data length */
-        name	/* the data */
-    );
+                              0, /* only_if_exists; set to false to create the atom if needed */
+                              strlen(name), /* data length */
+                              name	/* the data */
+                            );
 
     reply = xcb_intern_atom_reply( ghost->conn,
-        cookie,
-        NULL /* error pointer */
-    );
+                                   cookie,
+                                   NULL /* error pointer */
+                                 );
 
-    if ( !reply ){
+    if ( !reply ) {
         error( "Unable to intern atom with name %s\n", name );
         return XCB_ATOM_NONE;
     }
@@ -45,24 +46,25 @@ atom_for_name( ghost_t *ghost, const char *name){
     return result;
 }
 
-/**
+/*
  * Applies the given float opacity to the window.
  */
 static void
-apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
+apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity )
+{
     uint32_t val = (uint32_t) (opacity * OPAQUE);
 
     info( "setting opacity for window 0x%x to %d (%f)\n", win->target_win, val, opacity );
 
     xcb_change_property( ghost->conn, /* connection */
-        XCB_PROP_MODE_REPLACE,	/* mode */
-        win->target_win,	/* window */
-        ghost->opacity_atom, /* atom to change */
-        XCB_ATOM_CARDINAL,	/* property type */
-        32,	/* format, meaning whether the data should be considered as a list of 8-bit, 16-bit, or 32-bit quantities */
-        1,	/* data length */
-        (unsigned char *) &val	/* the data for the property */
-    );
+                         XCB_PROP_MODE_REPLACE,	/* mode */
+                         win->target_win,	/* window */
+                         ghost->opacity_atom, /* atom to change */
+                         XCB_ATOM_CARDINAL,	/* property type */
+                         32,	/* format, meaning whether the data should be considered as a list of 8-bit, 16-bit, or 32-bit quantities */
+                         1,	/* data length */
+                         (unsigned char *) &val	/* the data for the property */
+                       );
     xcb_flush( ghost->conn );
 }
 
@@ -71,7 +73,8 @@ apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity ){
  * freed by the caller.
  */
 static char *
-get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
+get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop)
+{
     xcb_get_property_cookie_t prop_cookie;
     xcb_get_property_reply_t *reply;
     void *data;
@@ -79,27 +82,27 @@ get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
     char *result;
 
     prop_cookie = xcb_get_property( ghost->conn,
-        0, /* delete */
-        win,	/* the window */
-        prop,	/* the property */
-        XCB_ATOM_STRING, /* the property type */
-        0,	/* data offset */
-        MAX_STR_LEN /* the max length of the data */
-    );
+                                    0, /* delete */
+                                    win,	/* the window */
+                                    prop,	/* the property */
+                                    XCB_ATOM_STRING, /* the property type */
+                                    0,	/* data offset */
+                                    MAX_STR_LEN /* the max length of the data */
+                                  );
 
     xcb_flush( ghost->conn );
 
     reply = xcb_get_property_reply( ghost->conn,
-        prop_cookie, /* the cookie */
-        NULL	/* error pointer */
-    );
+                                    prop_cookie, /* the cookie */
+                                    NULL	/* error pointer */
+                                  );
 
-    if ( !reply ){
+    if ( !reply ) {
         warn( "Unable to get property 0x%x from window 0x%x\n", prop, win);
         return NULL;
     }
 
-    if ( reply->type == XCB_ATOM_NONE ){
+    if ( reply->type == XCB_ATOM_NONE ) {
         free( reply );
         return NULL;
     }
@@ -107,7 +110,7 @@ get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
     data = xcb_get_property_value( reply );
     len = xcb_get_property_value_length( reply );
 
-    if ( len < 1 ){
+    if ( len < 1 ) {
         return NULL;
     }
 
@@ -120,12 +123,13 @@ get_string_property( ghost_t *ghost, xcb_window_t win, xcb_atom_t prop) {
     return result;
 }
 
-/**
+/*
  * Returns the xcb_window_t with the current input focus or 0
  * if it cannot be determined.
  */
 static xcb_window_t
-get_focused_window( ghost_t *ghost ){
+get_focused_window( ghost_t *ghost )
+{
     xcb_get_input_focus_cookie_t cookie;
     xcb_get_input_focus_reply_t *reply;
     xcb_window_t focused_window;
@@ -134,7 +138,7 @@ get_focused_window( ghost_t *ghost ){
 
     reply = xcb_get_input_focus_reply( ghost->conn, cookie, NULL );
 
-    if ( !reply ){
+    if ( !reply ) {
         warn( "Unable to determine current focused window\n" );
         return 0;
     }
@@ -148,11 +152,12 @@ get_focused_window( ghost_t *ghost ){
     return focused_window;
 }
 
-/**
+/*
  * Registers this client for events from the given window.
  */
 static void
-register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events ){
+register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events )
+{
     uint32_t values[1];
     values[0] = events;
 
@@ -160,11 +165,12 @@ register_for_events( ghost_t *ghost, xcb_window_t win, uint32_t events ){
     xcb_flush( ghost->conn );
 }
 
-/**
+/*
  * Gets the highest parent window that is not the root
  */
 static xcb_window_t
-get_top_window( ghost_t *ghost, xcb_window_t win ){
+get_top_window( ghost_t *ghost, xcb_window_t win )
+{
     xcb_window_t current;
     xcb_window_t parent;
     xcb_window_t root;
@@ -172,14 +178,14 @@ get_top_window( ghost_t *ghost, xcb_window_t win ){
     xcb_query_tree_reply_t *reply;
 
     current = win;
-    while ( 1 ){
+    while ( 1 ) {
         tree_cookie = xcb_query_tree( ghost->conn, current );
         reply = xcb_query_tree_reply( ghost->conn,
-            tree_cookie,
-            NULL /* error pointer */
-        );
+                                      tree_cookie,
+                                      NULL /* error pointer */
+                                    );
 
-        if ( !reply ){
+        if ( !reply ) {
             error( "Failed to query tree for window 0x%x\n", win );
             return 0;
         }
@@ -203,28 +209,29 @@ get_top_window( ghost_t *ghost, xcb_window_t win ){
     return 0;
 }
 
-/**
+/*
  * Checks the given window against the rule and returns a configured
  * ght_window_t pointer if the window matches the rule. The caller is responsible
  * for freeing the ght_window_t memory.
  */
 static ght_window_t *
-check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
+check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule )
+{
     /* go through each matcher in the rule to see if they all match */
     char *win_value;
     int matched = 0;
 
     ght_matcher_t *matcher;
-    ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ){
+    ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ) {
         win_value = get_string_property( ghost,
-            win, matcher->name_atom );
+                                         win, matcher->name_atom );
 
         matched = win_value != NULL
-            && strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
+                  && strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
 
         free( win_value );
 
-        if ( !matched ){
+        if ( !matched ) {
             return NULL;
         }
     }
@@ -239,24 +246,25 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule ){
     return ght_win;
 }
 
-/**
+/*
  * Returns a new ght_window_t if this window matches one of the configured
  * rules.
  */
 static ght_window_t *
-check_window( ghost_t *ghost, xcb_window_t win ){
+check_window( ghost_t *ghost, xcb_window_t win )
+{
     /* find the first rule that matches */
     ght_window_t *ght_win;
     int idx = 0;
     ght_rule_t *rule;
-    ght_list_for_each( &(ghost->rules), rule, ght_rule_t ){
+    ght_list_for_each( &(ghost->rules), rule, ght_rule_t ) {
         ght_win = check_window_against_rule( ghost, win, rule );
-        if ( ght_win != NULL ){
+        if ( ght_win != NULL ) {
             debug( "[check_window] Found rule match for window 0x%x at index %d: "
-                "normal=%f, focus=%f\n",
-                win, idx,
-                ght_win->normal_opacity,
-                ght_win->focus_opacity );
+                   "normal=%f, focus=%f\n",
+                   win, idx,
+                   ght_win->normal_opacity,
+                   ght_win->focus_opacity );
 
             return ght_win;
         }
@@ -267,29 +275,32 @@ check_window( ghost_t *ghost, xcb_window_t win ){
     return NULL;
 }
 
-/**
+/*
  * Returns the ght_window_t with the given xcb window id or NULL if not found.
  */
 static ght_window_t *
-find_window( ghost_t *ghost, xcb_window_t win ){
+find_window( ghost_t *ghost, xcb_window_t win )
+{
     return (ght_window_t *) ght_map_get( ghost->win_map, &win );
 }
 
-/**
+/*
  * Returns the ght_window_t with the given xcb target window or NULL if not found.
  * ght_window_t *.
  */
 static ght_window_t *
-find_window_by_target( ghost_t *ghost, xcb_window_t target ){
+find_window_by_target( ghost_t *ghost, xcb_window_t target )
+{
     return (ght_window_t *) ght_map_get( ghost->target_win_map, &target );
 }
 
-/**
+/*
  * Removes the given ght_window_t from the lookup maps and frees its memory.
  */
 static void
-untrack_window( ghost_t *ghost, ght_window_t *ght_win ){
-    if ( ght_win == NULL ){
+untrack_window( ghost_t *ghost, ght_window_t *ght_win )
+{
+    if ( ght_win == NULL ) {
         return;
     }
 
@@ -303,46 +314,48 @@ untrack_window( ghost_t *ghost, ght_window_t *ght_win ){
     free( ght_win );
 }
 
-/**
+/*
  * Adds the given ght_window_t to the tracked window maps, freeing any
  * previous entry that may have been there.
  */
 static void
-track_window( ghost_t *ghost, ght_window_t *ght_win ){
-    if ( ght_win == NULL ){
+track_window( ghost_t *ghost, ght_window_t *ght_win )
+{
+    if ( ght_win == NULL ) {
         return;
     }
 
     debug("[track_window] Adding window to tracked list: "
-        "win=0x%x, target_win=0x%x, "
-        "normal_opacity=%f, focus_opacity=%f\n",
-        ght_win->win, ght_win->target_win,
-        ght_win->normal_opacity, ght_win->focus_opacity );
+          "win=0x%x, target_win=0x%x, "
+          "normal_opacity=%f, focus_opacity=%f\n",
+          ght_win->win, ght_win->target_win,
+          ght_win->normal_opacity, ght_win->focus_opacity );
 
     ght_window_t *prev = ght_map_put( ghost->win_map,
-        &(ght_win->win),
-        ght_win );
+                                      &(ght_win->win),
+                                      ght_win );
 
     /* free the previous version if we had one */
-    if ( prev != NULL ){
+    if ( prev != NULL ) {
         ght_map_remove( ghost->target_win_map,
-                &(prev->target_win));
+                        &(prev->target_win));
         free( prev );
     }
 
     /* add this entry to the parent window map */
     ght_map_put( ghost->target_win_map,
-        &(ght_win->target_win),
-        ght_win );
+                 &(ght_win->target_win),
+                 ght_win );
 }
 
-/**
+/*
  * Changes the parent/target window of the ght_window_t, updating the lookup maps
  * as needed.
  */
 void
-reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent ){
-    if ( ght_win == NULL ){
+reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent )
+{
+    if ( ght_win == NULL ) {
         return;
     }
 
@@ -356,11 +369,12 @@ reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent 
     ght_map_put( ghost->target_win_map, &new_parent, ght_win );
 }
 
-/**
+/*
  * Checks the given window and all child windows recursively.
  */
 void
-load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
+load_windows_recursive( ghost_t *ghost, xcb_window_t win )
+{
     xcb_query_tree_cookie_t tree_cookie;
     xcb_query_tree_reply_t *reply;
     int child_count;
@@ -368,7 +382,7 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 
     /* check this window */
     ght_window_t *ght_win = check_window( ghost, win );
-    if ( ght_win != NULL ){
+    if ( ght_win != NULL ) {
         /* start tracking the window */
         track_window( ghost, ght_win );
     }
@@ -377,11 +391,11 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
     tree_cookie = xcb_query_tree( ghost->conn, win );
 
     reply = xcb_query_tree_reply( ghost->conn,
-        tree_cookie,
-        NULL /* error pointer */
-    );
+                                  tree_cookie,
+                                  NULL /* error pointer */
+                                );
 
-    if ( !reply ){
+    if ( !reply ) {
         error( "Failed to query tree for window 0x%x\n", win );
         return;
     }
@@ -390,50 +404,53 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win ){
 
     child = xcb_query_tree_children( reply );
     int i;
-    for ( i=0; i<child_count; i++ ){
+    for ( i=0; i<child_count; i++ ) {
         load_windows_recursive( ghost, child[i] );
     }
 
     free( reply );
 }
 
-/**
+/*
  * Clears all entries in the given map. If free_values is true, the
  * value memory will also be freed.
  */
 static void
-clear_dynamic_map( map_t *map, bool free_values){
+clear_dynamic_map( map_t *map, bool free_values)
+{
     map_entry_t *entry;
     map_iter_t iter;
-    ght_map_for_each_entry( map, &iter, entry ){
-        if ( free_values ){
+    ght_map_for_each_entry( map, &iter, entry ) {
+        if ( free_values ) {
             free( entry->value );
         }
         ght_map_remove_entry( map, entry );
     }
 }
 
-/**
+/*
  * Clears and frees all memory associated with a list of matchers.
  */
 static void
-clear_matcher_list( list_t *matcher_list){
+clear_matcher_list( list_t *matcher_list)
+{
     list_iter_t iter;
     ght_matcher_t *matcher;
-    ght_list_mod_for_each( matcher_list, &iter, matcher, ght_matcher_t ){
+    ght_list_mod_for_each( matcher_list, &iter, matcher, ght_matcher_t ) {
         ght_list_remove( matcher_list, matcher );
         free( matcher );
     }
 }
 
-/**
+/*
  * Clears and frees all memory associated with a list of rules.
  */
 static void
-clear_rule_list( list_t *rule_list ){
+clear_rule_list( list_t *rule_list )
+{
     list_iter_t iter;
     ght_rule_t *rule;
-    ght_list_mod_for_each( rule_list, &iter, rule, ght_rule_t ){
+    ght_list_mod_for_each( rule_list, &iter, rule, ght_rule_t ) {
         clear_matcher_list( &(rule->matchers) );
         ght_list_remove( rule_list, rule );
         free( rule );
@@ -442,10 +459,14 @@ clear_rule_list( list_t *rule_list ){
 
 /* ##################### Ghost functions ################## */
 
+/*
+ * Convenience object for initializing empty lists.
+ */
 static const list_t EMPTY_LIST = { NULL };
 
 ghost_t *
-ght_create( const char *displayname, int *screenp ){
+ght_create( const char *displayname, int *screenp )
+{
     ghost_t *ghost = checked_malloc( sizeof( ghost_t ));
 
     /* initialize members */
@@ -467,7 +488,8 @@ ght_create( const char *displayname, int *screenp ){
 }
 
 void
-ght_destroy( ghost_t *ghost ){
+ght_destroy( ghost_t *ghost )
+{
     /* disconnect from the x server */
     xcb_disconnect( ghost->conn );
 
@@ -494,7 +516,6 @@ ght_destroy( ghost_t *ghost ){
 
     debug( "win map cleared\n" );
 
-
     /* free the ghost itself */
     free( ghost );
 
@@ -502,7 +523,8 @@ ght_destroy( ghost_t *ghost ){
 }
 
 bool
-ght_load_rule_file( ghost_t *ghost, char *filepath ){
+ght_load_rule_file( ghost_t *ghost, char *filepath )
+{
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
@@ -511,7 +533,8 @@ ght_load_rule_file( ghost_t *ghost, char *filepath ){
 }
 
 bool
-ght_load_rule_str( ghost_t *ghost, char *rule ){
+ght_load_rule_str( ghost_t *ghost, char *rule )
+{
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
@@ -520,7 +543,8 @@ ght_load_rule_str( ghost_t *ghost, char *rule ){
 }
 
 void
-ght_load_windows( ghost_t *ghost ){
+ght_load_windows( ghost_t *ghost )
+{
     /* clear the current maps */
     clear_dynamic_map( ghost->target_win_map, 0 );
     clear_dynamic_map( ghost->win_map, 1 );
@@ -530,20 +554,21 @@ ght_load_windows( ghost_t *ghost ){
 }
 
 void
-ght_apply_opacity_settings( ghost_t *ghost, bool consider_focused_states ){
+ght_apply_opacity_settings( ghost_t *ghost, bool consider_focused_states )
+{
     xcb_window_t focus = 0;
     float opacity;
     map_iter_t iter;
     ght_window_t *ght_win;
 
-    if ( consider_focused_states ){
+    if ( consider_focused_states ) {
         focus = get_focused_window( ghost );
     }
 
-    ght_map_for_each( ghost->win_map, &iter, ght_win, ght_window_t * ){
+    ght_map_for_each( ghost->win_map, &iter, ght_win, ght_window_t * ) {
         /* decide if we should use the normal or focused opacity setting */
         opacity = ght_win->normal_opacity;
-        if ( focus == ght_win->win || focus == ght_win->target_win ){
+        if ( focus == ght_win->win || focus == ght_win->target_win ) {
             opacity = ght_win->focus_opacity;
         }
 
@@ -552,32 +577,31 @@ ght_apply_opacity_settings( ghost_t *ghost, bool consider_focused_states ){
 }
 
 void
-ght_monitor( ghost_t *ghost ){
-    register_for_events( ghost, ghost->winroot, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
-
+ght_monitor( ghost_t *ghost )
+{
     /* go through any existing windows and register for their events */
     ght_window_t *existing_win;
     map_iter_t iter;
-    ght_map_for_each( ghost->win_map, &iter, existing_win, ght_window_t * ){
+    ght_map_for_each( ghost->win_map, &iter, existing_win, ght_window_t * ) {
         register_for_events( ghost, existing_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
     }
 
+    /* register for child events on the root window */
+    register_for_events( ghost, ghost->winroot, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
+
     /* wait for new window events */
     xcb_generic_event_t *event;
-    while ( event = xcb_wait_for_event( ghost->conn )){
-        switch ( event->response_type & ~0x80 ){
+    while ( event = xcb_wait_for_event( ghost->conn )) {
+        switch ( event->response_type & ~0x80 ) {
             /* apply settings to new windows */
             case XCB_CREATE_NOTIFY: {
                 xcb_create_notify_event_t *create_evt =
                     (xcb_create_notify_event_t *) event;
                 debug( "Window created! 0x%x\n", create_evt->window );
 
-                /* check the window and any of it's children for matches
-                load_windows_recursive( ghost, create_evt->window ); */
-
-                /* check this window */
+                /* check if this window matches our rules */
                 ght_window_t *ght_win = check_window( ghost, create_evt->window );
-                if ( ght_win != NULL ){
+                if ( ght_win != NULL ) {
                     track_window( ghost, ght_win );
 
                     /* register for focus events from the target window */
@@ -588,9 +612,11 @@ ght_monitor( ghost_t *ghost ){
                 }
                 break;
             }
-            /* this is needed for use with reparenting window managers since we
-            may not be able to apply opacity settings to the correct window when
-            the window is first created. */
+            /*
+             * This is needed for use with reparenting window managers since we
+             * may not be able to apply opacity settings to the correct window when
+             * the window is first created.
+             */
             case XCB_REPARENT_NOTIFY: {
                 xcb_reparent_notify_event_t *reparent_evt =
                     (xcb_reparent_notify_event_t *) event;
@@ -598,12 +624,8 @@ ght_monitor( ghost_t *ghost ){
 
                 /* check if this is a tracked window */
                 ght_window_t *ght_win = find_window( ghost, reparent_evt->window );
-                if ( ght_win != NULL ){
-                    debug( "old top window 0x%x\n", ght_win->target_win );
-
+                if ( ght_win != NULL ) {
                     reparent_window( ghost, ght_win, get_top_window( ghost, ght_win->win ));
-
-                    debug( "new top window 0x%x\n", ght_win->target_win );
 
                     /* register for focus events from the target window */
                     register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
@@ -619,7 +641,7 @@ ght_monitor( ghost_t *ghost ){
                 debug( "Focus in 0x%x\n", in->event );
 
                 ght_window_t *ght_win = find_window_by_target( ghost, in->event );
-                if ( ght_win != NULL ){
+                if ( ght_win != NULL ) {
                     apply_opacity( ghost, ght_win, ght_win->focus_opacity );
                 }
                 break;
@@ -630,7 +652,7 @@ ght_monitor( ghost_t *ghost ){
                 debug( "Focus out 0x%x\n", out->event );
 
                 ght_window_t *ght_win = find_window_by_target( ghost, out->event );
-                if ( ght_win != NULL ){
+                if ( ght_win != NULL ) {
                     apply_opacity( ghost, ght_win, ght_win->normal_opacity );
                 }
 
@@ -641,14 +663,15 @@ ght_monitor( ghost_t *ghost ){
                     (xcb_destroy_notify_event_t *) event;
                 debug( "Window destroyed 0x%x\n", destroy_evt->window );
 
+                /* try to find the window by id or target id */
                 ght_window_t *ght_win = find_window( ghost, destroy_evt->window );
-                if ( ght_win == NULL ){
+                if ( ght_win == NULL ) {
                     ght_win = find_window_by_target( ghost, destroy_evt->window );
                 }
 
-                if ( ght_win != NULL ){
+                if ( ght_win != NULL ) {
                     debug( "Untracking window. win= 0x%x, target_win= 0x%x\n",
-                            ght_win->win, ght_win->target_win );
+                           ght_win->win, ght_win->target_win );
                     untrack_window( ghost, ght_win );
                 }
                 break;

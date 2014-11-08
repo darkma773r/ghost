@@ -9,84 +9,88 @@
 #include <string.h>
 #include "ghost.h"
 
-/* struct for passing around command line arguments */
+/* Struct for passing around command line arguments */
 typedef struct cmdargs_t {
-	bool help;
-	bool monitor;
+    bool help;
+    bool monitor;
 } cmdargs_t;
 
-/* struct containing command line argument defaults */
+/* Struct containing command line argument defaults */
 cmdargs_t DEFAULT_ARGS = {
-	0,
-	0
+    0,
+    0
 };
 
-/**
+/*
  * Prints a usage message and exits.
  */
 static void
-usage(){
-	fprintf( stderr,
-		"GHOST\nA simple program for adding transparency to X windows.\n");
-	fprintf( stderr,
-		"Written by Matt Juntunen, 2014\n\n");
-	fprintf( stderr,
-		"USAGE: ghost [OPTIONS]\n" );
-	fprintf( stderr,
-		"   -h, --help      Display this message\n");
-	fprintf( stderr,
-		"   -m, --monitor   Enter monitoring mode. In this mode, the program will continuously "
-		"monitor events from the X windowing system and apply opacity rules as needed.\n");
+usage()
+{
+    fprintf( stderr,
+             "GHOST\nA simple program for adding transparency to X windows.\n");
+    fprintf( stderr,
+             "Written by Matt Juntunen, 2014\n\n");
+    fprintf( stderr,
+             "USAGE: ghost [OPTIONS]\n" );
+    fprintf( stderr,
+             "   -h, --help      Display this message\n");
+    fprintf( stderr,
+             "   -m, --monitor   Enter monitoring mode. In this mode, the program will continuously "
+             "monitor events from the X windowing system and apply opacity rules as needed.\n");
 
-	exit( 1 );
+    exit( 1 );
 }
 
-/* Macro for comparing the long and short versions of command-line
-flags at once. It's just a lot of typing otherwise! */
+/*
+ * Macro for comparing the long and short versions of command-line
+ * flags at once. It's just a lot of typing otherwise!
+ */
 #define FLAG_COMPARE(X,Y,Z) (strcmp((X),(Z)) == 0 || strcmp((Y),(Z)) == 0)
 
-/**
+/*
  * Parses the command line arguments and displays the usage message if requested
  * or no arguments were given.
  */
 cmdargs_t
-parse_args( int argc, char **argv ){
-	cmdargs_t args = DEFAULT_ARGS;
+parse_args( int argc, char **argv )
+{
+    cmdargs_t args = DEFAULT_ARGS;
 
-	/* the first argument is the executable name so start at 1 */
-	int i;
-	for ( i=1; i<argc; i++ ){
-		if ( FLAG_COMPARE( "-h", "--help", argv[i] )){
-			args.help = 1;
-		} else if ( FLAG_COMPARE( "-m", "--monitor", argv[i] )){
-			args.monitor = 1;
-		} else {
-			fprintf( stderr, "Unknown argument: %s\n", argv[i] );
+    /* the first argument is the executable name so start at 1 */
+    int i;
+    for ( i=1; i<argc; i++ ) {
+        if ( FLAG_COMPARE( "-h", "--help", argv[i] )) {
+            args.help = 1;
+        } else if ( FLAG_COMPARE( "-m", "--monitor", argv[i] )) {
+            args.monitor = 1;
+        } else {
+            fprintf( stderr, "Unknown argument: %s\n", argv[i] );
             usage();
-		}
-	}
+        }
+    }
 
-	if ( argc < 2 || args.help ){
-		usage();
-	}
+    if ( argc < 2 || args.help ) {
+        usage();
+    }
 
-	return args;
+    return args;
 }
 
-
-/* constant to help initialize lists */
+/* Constant to help initialize lists */
 static const list_t EMPTY_LIST = { NULL };
 
-/* main ghost reference */
+/* Main ghost reference */
 ghost_t * ghost;
 
-/**
+/*
  * If it's an entry point ye seek, then look no further.
  */
 int
-main( int argc, char **argv ){
-	/* check the command line */
-	cmdargs_t args = parse_args( argc, argv );
+main( int argc, char **argv )
+{
+    /* check the command line */
+    cmdargs_t args = parse_args( argc, argv );
 
     /* initialize ghost */
     ghost = ght_create( NULL, NULL );
@@ -125,5 +129,5 @@ main( int argc, char **argv ){
         ght_monitor( ghost );
     }
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
