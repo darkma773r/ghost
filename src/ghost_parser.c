@@ -11,10 +11,10 @@
 
 static const char MATCHER_VALUE_START = '(';
 static const char MATCHER_VALUE_END = '(';
-static const char MATCHER_DELIMITER = ',';
 static const char RULE_BODY_START = '{';
 static const char RULE_BODY_END = '}';
 static const char OPACITY_DELIMITER = ':';
+static const char OPACITY_END = ';';
 
 typedef struct {
     FILE *input;
