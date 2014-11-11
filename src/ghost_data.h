@@ -164,9 +164,9 @@ typedef void * (*copy_fn)( void *key );
  * list_node_t member.
  */
 typedef struct map_entry_t {
+    list_node_t node;
 	void *key;
 	void *value;
-	list_node_t node;
 } map_entry_t;
 
 

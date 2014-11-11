@@ -594,8 +594,6 @@ START_TEST( test_ght_map_for_each_entry )
     map_iter_t iter;
     map_entry_t *entry;
     ght_map_for_each_entry( map, &iter, entry ) {
-        fprintf( stderr, "bucket_idx: %d, key: %s, value: %d\n",
-                 iter.bucket_idx, (char *) entry->key, *(int *)entry->value );
         counter += *((int *) entry->value);
     }
 
@@ -631,8 +629,6 @@ START_TEST( test_ght_map_for_each_entry_removed_entries )
     map_iter_t iter;
     map_entry_t *entry;
     ght_map_for_each_entry( map, &iter, entry ) {
-        printf( "bucket_idx: %d, key: %s, value: %d\n",
-                iter.bucket_idx, (char *) entry->key, *(int *)entry->value );
         counter += *(int *) entry->value;
     }
 
@@ -653,8 +649,6 @@ START_TEST( test_ght_map_for_each_entry_empty )
     map_iter_t iter;
     map_entry_t *entry;
     ght_map_for_each_entry( map, &iter, entry ) {
-        printf( "bucket_idx: %d, key: %s, value: %d\n",
-                iter.bucket_idx, (char *) entry->key, *(int *)entry->value );
         counter++;
     }
 
@@ -723,9 +717,6 @@ START_TEST( test_ght_map_for_each )
     map_iter_t iter;
     int *value;
     ght_map_for_each( map, &iter, value, int * ) {
-        printf( "bucket_idx: %d, value: %d\n",
-                iter.bucket_idx, *value );
-
         counter += *value;
     }
 
@@ -761,8 +752,6 @@ START_TEST( test_ght_map_for_each_removed_entries )
     map_iter_t iter;
     int *value;
     ght_map_for_each( map, &iter, value, int * ) {
-        printf( "bucket_idx: %d, value: %d\n",
-                iter.bucket_idx, *value );
         counter += *value;
     }
 
@@ -784,8 +773,6 @@ START_TEST( test_ght_map_for_each_empty )
     map_iter_t iter;
     int *value;
     ght_map_for_each( map, &iter, value, int * ) {
-        printf( "bucket_idx: %d, value: %d\n",
-                iter.bucket_idx, *value );
         counter++;
     }
 
@@ -839,8 +826,6 @@ START_TEST( test_ght_map_for_each_entry_remove_entry )
     map_iter_t iter;
     map_entry_t *entry;
     ght_map_for_each_entry( map, &iter, entry ) {
-        printf( "bucket_idx: %d, key: %s\n",
-                iter.bucket_idx, entry->key);
         ght_map_remove_entry( map, entry );
         counter++;
     }

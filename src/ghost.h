@@ -70,17 +70,17 @@ typedef struct ght_window_t {
  * against string window properties.
  */
 typedef struct ght_matcher_t {
+    /* required for use in lists */
+	list_node_t node;
+
     /* The name of the X11 property to use in the match */
-    char name[MAX_STR_LEN];
+    char name[MAX_STR_LEN + 1];
 
     /* The x11 atom corresponding to the matcher name */
 	xcb_atom_t name_atom;
 
 	/* The value to match against */
-	char value[MAX_STR_LEN];
-
-	/* required for use in lists */
-	list_node_t node;
+	char value[MAX_STR_LEN + 1];
 } ght_matcher_t;
 
 /*
@@ -88,15 +88,15 @@ typedef struct ght_matcher_t {
  * to matched windows.
  */
 typedef struct ght_rule_t {
+    /* required for use in lists */
+	list_node_t node;
+
 	/* list of matchers */
 	list_t matchers;
 
 	/* opacity settings */
 	float focus_opacity;
 	float normal_opacity;
-
-	/* required for use in lists */
-	list_node_t node;
 } ght_rule_t;
 
 /*

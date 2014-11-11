@@ -9,7 +9,7 @@ check_ghost_data_SOURCES = check_ghost_data.c $(top_builddir)/src/ghost_data.h
 check_ghost_data_CFLAGS = @CHECK_CFLAGS@
 check_ghost_data_LDADD = $(top_builddir)/src/ghost_data.o @CHECK_LIBS@ -lxcb
 
-check_ghost_parser_SOURCES = check_ghost_parser.c 
+check_ghost_parser_SOURCES = check_ghost_parser.c
 check_ghost_parser_CFLAGS = @CHECK_CFLAGS@
 check_ghost_parser_LDADD = $(top_builddir)/src/ghost_data.o @CHECK_LIBS@ -lxcb
 
