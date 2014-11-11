@@ -23,7 +23,9 @@ enum {
     DOUBLE_QUOTE = '"',
     SINGLE_QUOTE = '\'',
 
-    UNDERSCORE = '_'
+    UNDERSCORE = '_',
+
+    PERIOD = '.'
 };
 
 /* Structure to hold parsing information. */
@@ -165,6 +167,7 @@ read_str_token( ght_parser_t *p ){
              * Consume the end quote character and exit the loop.
              */
             get_char( p );
+            inquotes = false;
             break;
         } else if ( inquotes || is_valid_str_char( c )){
             if ( len >= MAX_STR_LEN ){
@@ -179,10 +182,65 @@ read_str_token( ght_parser_t *p ){
         }
     }
 
+    if ( inquotes && c == EOF ){
+        /* unclosed quote */
+        error( "Error parsing ghost rules at line %d, char %d: Unclosed quote: Expected %c but found end of file\n",
+                    p->linenum, p->charnum, quote_char );
+        p->error = true;
+    }
+
     /* terminate the string in the buffer */
     p->buffer[len] = '\0';
 
     return len;
+}
+
+/*
+ * Reads a double from the input. The double is expected to contain at
+ * least one digit with an optional decimal point and fraction component.
+ * Initial whitespace is ignored and parsing ends at the first non-digit
+ * character, with the exception of the single allowed decimal point.
+ */
+static double
+read_double( ght_parser_t *p ){
+    int c, idx = 0;
+    bool found_decimal = false;
+
+    /* consume initial spaces */
+    consume_space( p );
+
+    /* read the initial digit; this one is required */
+    c = peek_char( p );
+    if ( !isdigit( c )){
+        error( "Error parsing ghost rules at line %d, char %d: Expected digit but received '%c'\n",
+            p->linenum, p->charnum, c );
+        p->error = true;
+        return 0.0;
+    }
+    p->buffer[idx++] = get_char( p );
+
+    c = peek_char( p );
+    while ( isdigit( c ) || ( c == PERIOD && !found_decimal ) ){
+        if ( c == PERIOD ){
+            found_decimal = true;
+        }
+
+        if ( idx >= MAX_STR_LEN ){
+            error( "Error parsing ghost rules at line %d, char %d: Number string exceeded maximum length of %d\n",
+                    p->linenum, p->charnum, MAX_STR_LEN );
+            p->error = true;
+            return 0.0;
+        }
+
+        p->buffer[idx++] = get_char( p );
+
+        c = peek_char( p );
+    }
+
+    /* null terminate the buffer string */
+    p->buffer[idx] = '\0';
+
+    return atof( p->buffer );
 }
 
 /*
@@ -197,9 +255,10 @@ match_char( ght_parser_t *p, int expected ){
     int c = peek_char( p );
     if  ( c != expected ){
         if ( c == EOF ){
-            error( "Error parsing ghost rules: Reached end of file while parsing: Expected '%c'\n", expected );
+            error( "Error parsing ghost rules at line %d, char %d: Expected '%c' but found end of file\n",
+                p->linenum, p->charnum, expected );
         } else {
-            error( "Error parsing ghost rules at line %d, char %d: Expected '%c' but received '%c'\n",
+            error( "Error parsing ghost rules at line %d, char %d: Expected '%c' but found '%c'\n",
                 p->linenum, p->charnum, expected, c );
         }
         p->error = true;
@@ -216,17 +275,11 @@ match_char( ght_parser_t *p, int expected ){
 static bool
 match_str_token( ght_parser_t *p ){
     if ( read_str_token( p ) < 1 ) {
-        error( "Error parsing ghost rules at line %d, char %d: Expected string token but found %c\n",
+        error( "Error parsing ghost rules at line %d, char %d: Expected string token but found '%c'\n",
             p->linenum, p->charnum, peek_char( p ));
         p->error = true;
     }
     return !p->error;
-}
-
-static void
-read_rule_body( ght_parser_t *p, ght_rule_t *r )
-{
-
 }
 
 /*
@@ -303,6 +356,70 @@ read_matcher_list( ght_parser_t *p, ght_rule_t *rule )
     }
 
     return !p->error;
+}
+
+/*
+ * Reads a rule body from the input. A rule body consists of a set of
+ * name-number pairs surrounded by curly braces. The allowed names are
+ * "focus"/"f" and "normal"/"n". The names are not case-sensitive. The
+ * format is:
+ *
+ * rule_body = { ((focus|f|normal|n) : <floatvalue>;) * }
+ */
+static bool
+read_rule_body( ght_parser_t *p, ght_rule_t *r )
+{
+    /*
+     * Set opacity defaults to opaque. This will be the least intrusive
+     * to the window manager if something goes wrong.
+     */
+    r->normal_opacity = 1.0f;
+    r->focus_opacity = 1.0f;
+
+    /* start body */
+    if ( !match_char( p, BRACE_OPEN )){
+        return false;
+    }
+
+    /* read rule contents */
+    consume_space( p );
+    while ( is_valid_str_start_char( peek_char( p ))
+           && match_str_token( p )){
+        float *setting;
+
+        /* read the parameter name */
+        if ( strncasecmp( "focus", p->buffer, MAX_STR_LEN ) == 0
+            || strncasecmp( "f", p->buffer, MAX_STR_LEN ) == 0){
+            setting = &( r->focus_opacity );
+        } else if ( strncasecmp( "normal", p->buffer, MAX_STR_LEN ) == 0
+            || strncasecmp( "n", p->buffer, MAX_STR_LEN ) == 0) {
+            setting = &( r->normal_opacity );
+        } else {
+            error( "Error parsing ghost rules at line %d, char %d: Unknown rule parameter '%s'\n",
+                p->linenum, p->charnum, p->buffer );
+            p->error = true;
+            return false;
+        }
+
+        if ( !match_char( p , COLON )) {
+            return false;
+        }
+
+        double dval = read_double( p );
+
+        if ( p->error || !match_char( p, SEMICOLON )){
+            return false;
+        }
+
+        /* everything matches; assign the value */
+        *setting = (float) dval;
+
+        /* get ready for the next run */
+        consume_space( p );
+    }
+
+    /* everything matched so far, so if we match the end, we're golden */
+    return match_char( p, BRACE_END );
 }
 
 static ght_rule_t *

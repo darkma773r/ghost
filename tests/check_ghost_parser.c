@@ -323,6 +323,165 @@ START_TEST( test_read_str_token_exceeds_max_length )
 }
 END_TEST
 
+START_TEST( test_read_str_token_unclosed_quote )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "'abc" );
+
+    /* act */
+    int result = read_str_token( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 3, result );
+    ck_assert_int_eq( true, parser.error );
+    ck_assert_str_eq( "abc", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "123.45" );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 12345,  (int)( result * 100 ));
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_str_eq( "123.45", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_ignores_initial_spaces )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( " \r\n  \t\t123.45" );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 12345,  (int)( result * 100 ));
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_str_eq( "123.45", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_stops_at_first_non_digit )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "123.45" );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 12345,  (int)( result * 100 ));
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_str_eq( "123.45", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_multiple_decimal_points )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "123.45.." );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 12345,  (int)( result * 100 ));
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_str_eq( "123.45", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_number_exceeds_max_str_len )
+{
+    /* arrange */
+    char str[MAX_STR_LEN + 100];
+    int i;
+    for ( i=0; i < sizeof( str ) - 1; i++ ){
+        str[i] = '9';
+    }
+    str[ sizeof(str) - 1] = '\0';
+
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( str );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 0,  (int)( result ));
+    ck_assert_int_eq( true, parser.error );
+    ck_assert_int_eq( MAX_STR_LEN , strlen( parser.buffer ));
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_no_decimal )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "123" );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 12300,  (int)( result * 100 ));
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_str_eq( "123", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_double_no_digits_fails )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "x" );
+
+    /* act */
+    double result = read_double( &parser );
+
+    /* assert */
+    ck_assert_int_eq( 0,  (int)( result * 100 ));
+    ck_assert_int_eq( true, parser.error );
+    ck_assert_str_eq( "", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
 START_TEST( test_consume_space )
 {
     /* arrange */
@@ -517,6 +676,25 @@ START_TEST( test_match_str_token_failed_exceeds_max_length )
 }
 END_TEST
 
+START_TEST( test_match_str_token_unclosed_quote )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "'abc" );
+
+    /* act */
+    bool result = match_str_token( &parser );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+    ck_assert_int_eq( true, parser.error );
+    ck_assert_str_eq( "abc", parser.buffer );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
 
 /* ############################# PARSING ############################ */
 
@@ -684,6 +862,199 @@ START_TEST( test_read_matcher_list_total_failure )
 }
 END_TEST
 
+
+START_TEST( test_read_rule_body )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{\n\tfocus: 0.8;\n\tnormal: 0.4;\n}");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 8, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 4, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_short_form )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{f:0.8;N:0.4;}");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 8, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 4, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_uses_quotes_and_ucase )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{\n\t'FOCUS' : 99.8;\n\t\"NORmal\" : 5.4;\n}");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 998, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 54, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_missing_normal_uses_one )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{ focus:0.4; }");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 4, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_missing_focus_uses_one )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{ normal:0.4; }");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 10, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 4, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_missing_both_uses_one )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{ }");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_int_eq( 10, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_parsing_fails )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{ focus: x; }");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+
+    ck_assert_int_eq( 10, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( true, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_body_unknown_parameter )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "{ fake: 0.3; }");
+
+    ght_rule_t rule;
+
+    /* act */
+    bool result = read_rule_body( &parser, &rule );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+
+    ck_assert_int_eq( 10, (int)( rule.focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( rule.normal_opacity * 10 ));
+
+    ck_assert_int_eq( true, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
 Suite *
 ghost_parser_suite()
 {
@@ -715,6 +1086,15 @@ ghost_parser_suite()
 	tcase_add_test( tc_input, test_read_str_token_empty_token );
 	tcase_add_test( tc_input, test_read_str_token_multiple_calls );
 	tcase_add_test( tc_input, test_read_str_token_exceeds_max_length );
+	tcase_add_test( tc_input, test_read_str_token_unclosed_quote );
+
+	tcase_add_test( tc_input, test_read_double );
+	tcase_add_test( tc_input, test_read_double_ignores_initial_spaces );
+	tcase_add_test( tc_input, test_read_double_stops_at_first_non_digit );
+	tcase_add_test( tc_input, test_read_double_multiple_decimal_points );
+	tcase_add_test( tc_input, test_read_double_number_exceeds_max_str_len );
+	tcase_add_test( tc_input, test_read_double_no_decimal );
+	tcase_add_test( tc_input, test_read_double_no_digits_fails );
 
 	tcase_add_test( tc_input, test_consume_space );
 	tcase_add_test( tc_input, test_consume_space_no_space_found );
@@ -728,6 +1108,8 @@ ghost_parser_suite()
 	tcase_add_test( tc_input, test_match_str_token_spaces );
 	tcase_add_test( tc_input, test_match_str_token_failed );
 	tcase_add_test( tc_input, test_match_str_token_failed_exceeds_max_length );
+	tcase_add_test( tc_input, test_match_str_token_unclosed_quote );
+
 
 	suite_add_tcase( suite, tc_input );
 
@@ -742,6 +1124,15 @@ ghost_parser_suite()
     tcase_add_test( tc_parsing, test_read_matcher_list );
     tcase_add_test( tc_parsing, test_read_matcher_list_partial_failure );
     tcase_add_test( tc_parsing, test_read_matcher_list_total_failure );
+
+    tcase_add_test( tc_parsing, test_read_rule_body );
+    tcase_add_test( tc_parsing, test_read_rule_body_short_form );
+    tcase_add_test( tc_parsing, test_read_rule_body_uses_quotes_and_ucase );
+    tcase_add_test( tc_parsing, test_read_rule_body_missing_normal_uses_one );
+    tcase_add_test( tc_parsing, test_read_rule_body_missing_focus_uses_one );
+    tcase_add_test( tc_parsing, test_read_rule_body_missing_both_uses_one );
+    tcase_add_test( tc_parsing, test_read_rule_body_parsing_fails );
+    tcase_add_test( tc_parsing, test_read_rule_body_unknown_parameter );
 
 
     suite_add_tcase( suite, tc_parsing );
