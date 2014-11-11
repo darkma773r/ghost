@@ -342,6 +342,40 @@ START_TEST( test_read_str_token_unclosed_quote )
 }
 END_TEST
 
+START_TEST( test_has_str_token )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( " \na" );
+
+    /* act */
+    int result = has_str_token( &parser );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_has_str_token_failed )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( " \n" );
+
+    /* act */
+    int result = has_str_token( &parser );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
 START_TEST( test_read_double )
 {
     /* arrange */
@@ -587,6 +621,44 @@ START_TEST( test_match_char_eof )
     ck_assert_int_eq( false, result );
     ck_assert_int_eq( true, parser.error );
     ck_assert_int_eq( EOF, get_char( &parser ));
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_match_optional_char )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "ab" );
+
+    /* act */
+    bool result = match_optional_char( &parser, 'a' );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_int_eq( 'b', get_char( &parser ));
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_match_optional_char_failed )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "ab" );
+
+    /* act */
+    bool result = match_optional_char( &parser, 'c' );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+    ck_assert_int_eq( false, parser.error );
+    ck_assert_int_eq( 'a', get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -1055,6 +1127,235 @@ START_TEST( test_read_rule_body_unknown_parameter )
 }
 END_TEST
 
+
+START_TEST( test_read_rule_list )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "WM_CLASS(xterm) {\n\tfocus: 0.8;\n\tnormal: 0.4;\n} WM_OTHER(Abc) {f:0.2;n:1;}" );
+
+    list_t rules = { NULL, NULL };
+
+    ght_rule_t *a, *b;
+    ght_matcher_t *am, *bm;
+
+
+    /* act */
+    bool result = read_rule_list( &parser, &rules );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    /* check the first rule */
+    a = (ght_rule_t *) rules.head;
+    ck_assert_ptr_ne( NULL, a );
+    ck_assert_int_eq( 8, (int)( a->focus_opacity * 10 ));
+    ck_assert_int_eq( 4, (int)( a->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, a->matchers.head );
+    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+
+    am = (ght_matcher_t *) a->matchers.head;
+    ck_assert_str_eq( "WM_CLASS", am->name );
+    ck_assert_str_eq( "xterm", am->value );
+
+
+    /* check the second rule */
+    b = (ght_rule_t *) rules.tail;
+    ck_assert_ptr_ne( NULL, b );
+    ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, b->matchers.head );
+    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+
+    bm = (ght_matcher_t *) b->matchers.head;
+    ck_assert_str_eq( "WM_OTHER", bm->name );
+    ck_assert_str_eq( "Abc", bm->value );
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_list_combined_rule_body )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "WM_CLASS(xterm), WM_OTHER(Abc) {f:0.2;n:1;}" );
+
+    list_t rules = { NULL, NULL };
+
+    ght_rule_t *a, *b;
+    ght_matcher_t *am, *bm;
+
+    /* act */
+    bool result = read_rule_list( &parser, &rules );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    /* check the first rule */
+    a = (ght_rule_t *) rules.head;
+    ck_assert_ptr_ne( NULL, a );
+    ck_assert_int_eq( 2, (int)( a->focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( a->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, a->matchers.head );
+    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+
+    am = (ght_matcher_t *) a->matchers.head;
+    ck_assert_str_eq( "WM_CLASS", am->name );
+    ck_assert_str_eq( "xterm", am->value );
+
+
+    /* check the second rule */
+    b = (ght_rule_t *) rules.tail;
+    ck_assert_ptr_ne( NULL, b );
+    ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, b->matchers.head );
+    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+
+    bm = (ght_matcher_t *) b->matchers.head;
+    ck_assert_str_eq( "WM_OTHER", bm->name );
+    ck_assert_str_eq( "Abc", bm->value );
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_list_empty )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( " " );
+
+    list_t rules = { NULL, NULL };
+
+    ght_rule_t *a, *b;
+    ght_matcher_t *am, *bm;
+
+    /* act */
+    bool result = read_rule_list( &parser, &rules );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    ck_assert_ptr_eq( NULL, rules.head );
+    ck_assert_ptr_eq( NULL, rules.tail );
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_read_rule_list_failed_parsing )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( " WM_CLASS(xterm) , WM_OTHER(Abc) {f:0.2;n:1;} xyz  " );
+
+    list_t rules = { NULL, NULL };
+
+    ght_rule_t *a, *b;
+    ght_matcher_t *am, *bm;
+
+    /* act */
+    bool result = read_rule_list( &parser, &rules );
+
+    /* assert */
+    ck_assert_int_eq( false, result );
+
+    ck_assert_ptr_eq( NULL, rules.head );
+    ck_assert_ptr_eq( NULL, rules.tail );
+
+    ck_assert_int_eq( true, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_ght_parse_rules_from_string )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "WM_CLASS(xterm), WM_OTHER(Abc) {f:0.2;n:1;} WM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
+
+    list_t rules = { NULL, NULL };
+
+    ght_rule_t *a, *b, *c;
+    ght_matcher_t *am, *bm, *cm1, *cm2;
+
+    /* act */
+    bool result = read_rule_list( &parser, &rules );
+
+    /* assert */
+    ck_assert_int_eq( true, result );
+
+    /* check the first rule */
+    a = (ght_rule_t *) rules.head;
+    ck_assert_ptr_ne( NULL, a );
+    ck_assert_int_eq( 2, (int)( a->focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( a->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, a->matchers.head );
+    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+
+    am = (ght_matcher_t *) a->matchers.head;
+    ck_assert_str_eq( "WM_CLASS", am->name );
+    ck_assert_str_eq( "xterm", am->value );
+
+
+    /* check the second rule */
+    b = (ght_rule_t *) rules.head->next;
+    ck_assert_ptr_ne( NULL, b );
+    ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
+    ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, b->matchers.head );
+    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+
+    bm = (ght_matcher_t *) b->matchers.head;
+    ck_assert_str_eq( "WM_OTHER", bm->name );
+    ck_assert_str_eq( "Abc", bm->value );
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* check the third rule */
+    c = (ght_rule_t *) rules.tail;
+    ck_assert_ptr_ne( NULL, c );
+    ck_assert_int_eq( 8, (int)( c->focus_opacity * 10 ));
+    ck_assert_int_eq( 4, (int)( c->normal_opacity * 10 ));
+
+    ck_assert_ptr_ne( NULL, c->matchers.head );
+    ck_assert_ptr_ne( NULL, c->matchers.head->next );
+    ck_assert_ptr_eq( c->matchers.head->next, c->matchers.tail ); /* two in list */
+
+    cm1 = (ght_matcher_t *) c->matchers.head;
+    ck_assert_str_eq( "WM_CLASS", cm1->name );
+    ck_assert_str_eq( "thunar", cm1->value );
+
+    cm2 = (ght_matcher_t *) c->matchers.tail;
+    ck_assert_str_eq( "WM_NAME", cm2->name );
+    ck_assert_str_eq( "def", cm2->value );
+
+    ck_assert_int_eq( false, parser.error );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
 Suite *
 ghost_parser_suite()
 {
@@ -1088,6 +1389,9 @@ ghost_parser_suite()
 	tcase_add_test( tc_input, test_read_str_token_exceeds_max_length );
 	tcase_add_test( tc_input, test_read_str_token_unclosed_quote );
 
+	tcase_add_test( tc_input, test_has_str_token );
+	tcase_add_test( tc_input, test_has_str_token_failed );
+
 	tcase_add_test( tc_input, test_read_double );
 	tcase_add_test( tc_input, test_read_double_ignores_initial_spaces );
 	tcase_add_test( tc_input, test_read_double_stops_at_first_non_digit );
@@ -1103,6 +1407,9 @@ ghost_parser_suite()
 	tcase_add_test( tc_input, test_match_char_spaces );
 	tcase_add_test( tc_input, test_match_char_failed );
 	tcase_add_test( tc_input, test_match_char_eof );
+
+	tcase_add_test( tc_input, test_match_optional_char );
+	tcase_add_test( tc_input, test_match_optional_char_failed );
 
 	tcase_add_test( tc_input, test_match_str_token );
 	tcase_add_test( tc_input, test_match_str_token_spaces );
@@ -1134,6 +1441,12 @@ ghost_parser_suite()
     tcase_add_test( tc_parsing, test_read_rule_body_parsing_fails );
     tcase_add_test( tc_parsing, test_read_rule_body_unknown_parameter );
 
+    tcase_add_test( tc_parsing, test_read_rule_list );
+    tcase_add_test( tc_parsing, test_read_rule_list_combined_rule_body );
+    tcase_add_test( tc_parsing, test_read_rule_list_empty );
+    tcase_add_test( tc_parsing, test_read_rule_list_failed_parsing );
+
+    tcase_add_test( tc_parsing, test_ght_parse_rules_from_string );
 
     suite_add_tcase( suite, tc_parsing );
 

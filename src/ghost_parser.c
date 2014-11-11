@@ -25,7 +25,8 @@ enum {
 
     UNDERSCORE = '_',
 
-    PERIOD = '.'
+    PERIOD = '.',
+    COMMA = ','
 };
 
 /* Structure to hold parsing information. */
@@ -196,6 +197,16 @@ read_str_token( ght_parser_t *p ){
 }
 
 /*
+ * Returns true is the next non-whitespace character looks like the beginning
+ * of a valid string token.
+ */
+static bool
+has_str_token( ght_parser_t * p ){
+    consume_space( p );
+    return is_valid_str_start_char( peek_char( p ));
+}
+
+/*
  * Reads a double from the input. The double is expected to contain at
  * least one digit with an optional decimal point and fraction component.
  * Initial whitespace is ignored and parsing ends at the first non-digit
@@ -270,6 +281,20 @@ match_char( ght_parser_t *p, int expected ){
 }
 
 /*
+ * Same as match_char but does not report an error on a mismatch.
+ */
+static bool
+match_optional_char( ght_parser_t *p, int optional ){
+    consume_space( p );
+    if( peek_char( p ) != optional ){
+        return false;
+    }
+
+    get_char( p );
+    return true;
+}
+
+/*
  * Attempts to match a string token from the stream, returning true if successful.
  */
 static bool
@@ -309,11 +334,11 @@ read_matcher( ght_parser_t *p )
 }
 
 /*
- * Reads a list of one or more matchers. If the operation is successful,
- * parsed matchers are added to the matchers list in rule. Returns true
- * if the operation succeeded.
+ * Reads a list of one or more matchers separated by whitespace. If the
+ * operation is successful, parsed matchers are added to the matchers
+ * list in rule. Returns true if the operation succeeded.
  *
- * matcher_list = <matcher>+
+ * matcher_list = <matcher> +
  */
 static bool
 read_matcher_list( ght_parser_t *p, ght_rule_t *rule )
@@ -329,11 +354,9 @@ read_matcher_list( ght_parser_t *p, ght_rule_t *rule )
     ght_list_push( &list, matcher );
 
     /* read any remaining matchers into the local list */
-    consume_space( p );
-    while ( is_valid_str_start_char( peek_char( p ))
+    while ( has_str_token( p )
             && (matcher = read_matcher( p ))){
         ght_list_push( &list, matcher );
-        consume_space( p );
     }
 
     if ( p->error ){
@@ -382,8 +405,7 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
     }
 
     /* read rule contents */
-    consume_space( p );
-    while ( is_valid_str_start_char( peek_char( p ))
+    while ( has_str_token( p )
            && match_str_token( p )){
         float *setting;
 
@@ -413,45 +435,111 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
 
         /* everything matches; assign the value */
         *setting = (float) dval;
-
-        /* get ready for the next run */
-        consume_space( p );
     }
 
     /* everything matched so far, so if we match the end, we're golden */
     return match_char( p, BRACE_END );
 }
 
-static ght_rule_t *
-read_rule( ght_parser_t *p )
-{
-    ght_rule_t *new_rule = checked_malloc( sizeof( ght_rule_t ));
-
-    read_matcher_list( p, new_rule );
-    read_rule_body( p, new_rule );
-
-    if ( p->error ) {
-        /* TODO: free the memory from the rule */
-
-        free( new_rule );
-        return NULL;
+/*
+ * Moves the ght_rule_t items from src to dst.
+ */
+static void
+move_rule_list( list_t *src, list_t *dst ){
+    ght_rule_t *rule;
+    list_iter_t iter;
+    ght_list_mod_for_each( src, &iter, rule, ght_rule_t ){
+        ght_list_remove( src, rule );
+        ght_list_push( dst, rule );
     }
-    return new_rule;
 }
 
-static int
-read_rule_list( ght_parser_t *p, list_t *rules)
-{
-    int rulecount = 0;
-    ght_rule_t *r;
+/*
+ * Clears the ght_rule_t items from the list and frees their memory.
+ */
+static void
+free_rule_list( list_t *list ){
+    ght_rule_t *rule;
+    list_iter_t iter;
+    ght_list_mod_for_each( list, &iter, rule, ght_rule_t ){
+        ght_list_remove( list, rule );
+        free( rule );
+    }
+}
 
-    while ( peek_char( p ) != EOF &&
-            ( r = read_rule( p )) != NULL ) {
-        ght_list_push( rules, r );
-        rulecount++;
+/*
+ * Creates and adds a rule for each matcher list found. Expects at least
+ * one to be found.
+ */
+static bool
+add_rule_for_each_matcher_list( ght_parser_t *p, list_t *rules )
+{
+    list_t temp = { NULL, NULL };
+    list_iter_t iter;
+    ght_rule_t *rule;
+
+    do {
+        rule = checked_malloc( sizeof( ght_rule_t ));
+        ght_list_push( &temp, rule );
+    } while ( read_matcher_list( p, rule )
+             && match_optional_char( p, COMMA ));
+
+    if ( p->error ){
+        /* free the rules we've created */
+        free_rule_list( &temp );
+    } else {
+        /* copy the rules to the final list */
+        move_rule_list( &temp, rules );
     }
 
-    return rulecount;
+    return !p->error;
+}
+
+static bool
+read_rule_list( ght_parser_t *p, list_t *rules)
+{
+    list_t empty = { NULL, NULL };
+    list_t finished_rules = { NULL, NULL };
+    list_t temp_rules;
+
+    list_iter_t iter;
+
+    ght_rule_t *rule;
+    ght_rule_t body;
+    int c;
+
+    while ( has_str_token( p )){
+        temp_rules = empty;
+
+        /* read the rule matchers and body */
+        if ( !add_rule_for_each_matcher_list( p, &temp_rules ) ||
+            !read_rule_body( p, &body )){
+            break;
+        }
+
+        /*
+         * Since the rule body was valid, copy the settings to all
+         * of the temporarily stored rules and add them to the final list.
+         */
+        ght_list_mod_for_each( &temp_rules, &iter, rule, ght_rule_t ){
+            rule->focus_opacity = body.focus_opacity;
+            rule->normal_opacity = body.normal_opacity;
+
+            ght_list_remove( &temp_rules, rule );
+            ght_list_push( &finished_rules, rule );
+        }
+    }
+
+    if ( p->error ){
+        /* clean up after errors */
+        free_rule_list( &finished_rules );
+        free_rule_list( &temp_rules );
+    } else {
+        /* copy successfully created rules to the final list */
+        move_rule_list( &finished_rules, rules );
+    }
+
+    return !p->error;
 }
 
 
