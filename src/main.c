@@ -122,6 +122,7 @@ main( int argc, char **argv )
         loaded = ght_load_rule_file( ghost, args.rulefile );
     } else {
         info( "[main] Loading rules from command line argument\n" );
+        debug( "[main] Rule str: %s\n", args.rulestr );
         loaded = ght_load_rule_str( ghost, args.rulestr );
     }
 

@@ -147,14 +147,14 @@ ght_destroy( ghost_t *ghost );
  * whether or not the operation succeeded.
  */
 bool
-ght_load_rule_file( ghost_t *ghost, char *filepath );
+ght_load_rule_file( ghost_t *ghost, char *rulefile );
 
 /*
  * Loads rule from the given string. Returns a boolean indicating
  * whether or not the operation succeeded.
  */
 bool
-ght_load_rule_str( ghost_t *ghost, char *rule );
+ght_load_rule_str( ghost_t *ghost, char *rulestr );
 
 /*
  * Searches all existing x windows for ones matching the rulea and

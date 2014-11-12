@@ -16,7 +16,7 @@
 /*
  * Returns an atom for the given name.
  */
-xcb_atom_t
+static xcb_atom_t
 atom_for_name( ghost_t *ghost, const char *name)
 {
     xcb_intern_atom_cookie_t cookie;
@@ -68,7 +68,7 @@ apply_opacity( ghost_t *ghost, ght_window_t *win, double opacity )
     xcb_flush( ghost->conn );
 }
 
-/**
+/*
  * Returns a string property for the given window. The returned string must be
  * freed by the caller.
  */
@@ -352,7 +352,7 @@ track_window( ghost_t *ghost, ght_window_t *ght_win )
  * Changes the parent/target window of the ght_window_t, updating the lookup maps
  * as needed.
  */
-void
+static void
 reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent )
 {
     if ( ght_win == NULL ) {
@@ -372,7 +372,7 @@ reparent_window( ghost_t *ghost, ght_window_t *ght_win, xcb_window_t new_parent 
 /*
  * Checks the given window and all child windows recursively.
  */
-void
+static void
 load_windows_recursive( ghost_t *ghost, xcb_window_t win )
 {
     xcb_query_tree_cookie_t tree_cookie;
@@ -409,6 +409,23 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win )
     }
 
     free( reply );
+}
+
+/*
+ * Goes through the matchers on each configured rule and looks up
+ * the corresponding xcb atom for the matcher name. This is stored
+ * on the matcher itself to speed up window matching.
+ */
+static void
+populate_rule_atoms( ghost_t *ghost ){
+    ght_rule_t *rule;
+    ght_matcher_t *matcher;
+
+    ght_list_for_each( &(ghost->rules), rule, ght_rule_t ){
+        ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ){
+            matcher->name_atom = atom_for_name( ghost, matcher->name );
+        }
+    }
 }
 
 /*
@@ -523,23 +540,31 @@ ght_destroy( ghost_t *ghost )
 }
 
 bool
-ght_load_rule_file( ghost_t *ghost, char *filepath )
+ght_load_rule_file( ghost_t *ghost, char *rulefile )
 {
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
     /* load the new rules */
-    return ght_parse_rules_from_file( filepath, &(ghost->rules) );
+    if ( ght_parse_rules_from_file( rulefile, &(ghost->rules ))){
+        populate_rule_atoms( ghost );
+        return true;
+    }
+    return false;
 }
 
 bool
-ght_load_rule_str( ghost_t *ghost, char *rule )
+ght_load_rule_str( ghost_t *ghost, char *rulestr )
 {
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
     /* load the new rules */
-    return ght_parse_rules_from_string( rule, &(ghost->rules) );
+    if ( ght_parse_rules_from_string( rulestr, &(ghost->rules ))){
+        populate_rule_atoms( ghost );
+        return true;
+    }
+    return false;
 }
 
 void

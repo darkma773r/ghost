@@ -373,7 +373,7 @@ read_matcher_list( ght_parser_t *p, ght_rule_t *rule )
         ght_matcher_t *cur;
         ght_list_mod_for_each( &list, &iter, cur, ght_matcher_t ){
             ght_list_remove( &list, cur );
-            debug( "[read_matcher_list] adding matcher [name= %s, value= %s]\n", cur->name, cur->value );
+            debug( "[read_matcher_list] Found matcher [name= %s, value= %s]\n", cur->name, cur->value );
             ght_list_push( &(rule->matchers), cur );
         }
     }
@@ -436,8 +436,14 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
         *setting = (float) dval;
     }
 
-    /* everything matched so far, so if we match the end, we're golden */
-    return match_char( p, BRACE_END );
+
+    if( match_char( p, BRACE_END )){
+        /* log the rule body */
+        debug( "[read_rule_body] Found rule body: normal_opacity: %f, focus_opacity: %f\n",
+              r->normal_opacity, r->focus_opacity );
+        return true;
+    }
+    return false;
 }
 
 /*
@@ -526,6 +532,8 @@ read_rule_list( ght_parser_t *p, list_t *rules)
 
             ght_list_remove( &temp_rules, rule );
             ght_list_push( &finished_rules, rule );
+
+            /* log the full rule */
         }
     }
 
@@ -559,7 +567,7 @@ ght_parse_rules_from_file( char *filename, list_t *rules )
 
     fclose( p.input );
 
-    return p.error;
+    return !p.error;
 }
 
 
@@ -573,5 +581,5 @@ ght_parse_rules_from_string( char *input, list_t *rules )
 
     fclose( p.input );
 
-    return p.error;
+    return !p.error;
 }
