@@ -13,12 +13,16 @@
 typedef struct cmdargs_t {
     bool help;
     bool monitor;
+    char *rulefile;
+    char *rulestr;
 } cmdargs_t;
 
 /* Struct containing command line argument defaults */
 cmdargs_t DEFAULT_ARGS = {
     0,
-    0
+    0,
+    NULL,
+    NULL
 };
 
 /*
@@ -28,17 +32,21 @@ static void
 usage()
 {
     fprintf( stderr,
-             "GHOST\nA simple program for adding transparency to X windows.\n");
+             "\n##### GHOST #####\nA simple program for adding transparency to X windows.\n");
     fprintf( stderr,
              "Written by Matt Juntunen, 2014\n\n");
     fprintf( stderr,
-             "USAGE: ghost [OPTIONS]\n" );
+             "USAGE: ghost [OPTIONS] [opacity rule string]\n" );
     fprintf( stderr,
              "   -h, --help      Display this message\n");
+    fprintf( stderr,
+             "   -f, --file      Indicates that the next argument is the name of a file containing "
+             "ghost opacity rules.\n");
     fprintf( stderr,
              "   -m, --monitor   Enter monitoring mode. In this mode, the program will continuously "
              "monitor events from the X windowing system and apply opacity rules as needed.\n");
 
+    fprintf( stderr, "\n" );
     exit( 1 );
 }
 
@@ -64,13 +72,23 @@ parse_args( int argc, char **argv )
             args.help = 1;
         } else if ( FLAG_COMPARE( "-m", "--monitor", argv[i] )) {
             args.monitor = 1;
+        } else if( FLAG_COMPARE( "-f", "--file", argv[i] )) {
+            if ( i >= argc - 1 || argv[i+1][0] == '-' ) {
+                error( "File flag given but no name specified!\n" );
+                usage();
+            }
+            args.rulefile = argv[++i];
+        } else if ( i == argc - 1 ) {
+            /* if nothing else, use the last argument as the rule string */
+            args.rulestr = argv[i];
         } else {
-            fprintf( stderr, "Unknown argument: %s\n", argv[i] );
+            error( "Unknown argument: %s\n", argv[i] );
             usage();
         }
     }
 
-    if ( argc < 2 || args.help ) {
+    if ( argc < 2 || args.help
+            || ( args.rulefile == NULL && args.rulestr == NULL )) {
         usage();
     }
 
@@ -95,34 +113,35 @@ main( int argc, char **argv )
     /* initialize ghost */
     ghost = ght_create( NULL, NULL );
 
-    info( "Created ghost. conn = 0x%x\n", ghost->conn );
+    info( "[main] ghost initialized\n", ghost->conn );
 
-    /* TODO: load rules from the command line or a file here */
-    ght_matcher_t *xterm = checked_malloc( sizeof( ght_matcher_t ));
-    xterm->name_atom = atom_for_name( ghost, "WM_CLASS" );
-    strcpy( xterm->value, "xterm" );
+    /* load the rules */
+    bool loaded = false;
+    if ( args.rulefile != NULL ) {
+        info( "[main] Loading rules from file %s\n", args.rulefile );
+        loaded = ght_load_rule_file( ghost, args.rulefile );
+    } else {
+        info( "[main] Loading rules from command line argument\n" );
+        loaded = ght_load_rule_str( ghost, args.rulestr );
+    }
 
-    ght_rule_t *rule = checked_malloc( sizeof( ght_rule_t ));
-    rule->matchers = EMPTY_LIST;
-    rule->focus_opacity = 0.8f;
-    rule->normal_opacity = 0.7f;
-
-    ght_list_push( &(rule->matchers), xterm );
-
-    ght_list_push( &(ghost->rules), rule );
+    if ( !loaded ) {
+        error( "Failed to load ghost rules! Program exiting.\n" );
+        exit( EXIT_FAILURE );
+    }
 
     /* load windows */
-    info( "Loading windows...\n" );
+    info( "[main] Loading windows...\n" );
 
     ght_load_windows( ghost );
 
     if ( !args.monitor ) {
         /* perform a "once-and-done opacity setting */
-        info( "Applying normal opacity rules\n" );
+        info( "[main] Applying normal opacity rules\n" );
         ght_apply_opacity_settings( ghost, false );
     } else {
         /* enter monitor mode */
-        info( "Entering monitor mode...\n" );
+        info( "[main] Entering monitor mode...\n" );
         ght_apply_opacity_settings( ghost, true );
 
         /* down the rabbit hole, never to return ... */

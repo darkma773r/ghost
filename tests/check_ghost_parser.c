@@ -1289,7 +1289,7 @@ START_TEST( test_ght_parse_rules_from_string )
 {
     /* arrange */
     ght_parser_t parser = DEFAULT_PARSER;
-    parser.input = str_file( "WM_CLASS(xterm), WM_OTHER(Abc) {f:0.2;n:1;} WM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
+    parser.input = str_file( "WM_CLASS(xterm),\nWM_OTHER(Abc) {f:0.2;n:1;}\nWM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
 
     list_t rules = { NULL, NULL };
 

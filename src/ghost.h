@@ -23,25 +23,25 @@
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_ERROR
-    #define error( ... ) fprintf( stderr, __VA_ARGS__ );
+    #define error( ... ) do{ fprintf( stderr, "ERROR: "); fprintf( stderr, __VA_ARGS__ ); } while(0)
 #else
     #define error( ... )
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_WARN
-    #define warn( ... ) fprintf( stderr, __VA_ARGS__ );
+    #define warn( ... ) do{ fprintf( stderr, "WARN: "); fprintf( stderr, __VA_ARGS__ ); } while(0)
 #else
     #define warn( ... )
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_INFO
-    #define info( ... ) fprintf( stdout, __VA_ARGS__ );
+    #define info( ... ) do{ fprintf( stdout, "INFO: " ); fprintf( stdout, __VA_ARGS__ ); } while(0)
 #else
     #define info( ... )
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_DEBUG
-    #define debug( ... ) fprintf( stdout, __VA_ARGS__ );
+    #define debug( ... ) do{ fprintf( stdout, "DEBUG: "); fprintf( stdout, __VA_ARGS__ ); } while(0)
 #else
     #define debug( ... )
 #endif

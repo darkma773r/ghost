@@ -9,6 +9,13 @@
 #include "ghost_data.h"
 #include "ghost_parser.h"
 
+/*
+ * Logs an error message with the current parser line character number info.
+ */
+#define parser_error( PARSER, MSG, ... ) \
+    error( "Failed to parse ghost rules at line %d, char %d: " MSG,\
+              PARSER->linenum, PARSER->charnum, __VA_ARGS__ );
+
 /* Define character constants */
 enum {
     PAREN_OPEN = '(',
@@ -172,8 +179,7 @@ read_str_token( ght_parser_t *p ){
             break;
         } else if ( inquotes || is_valid_str_char( c )){
             if ( len >= MAX_STR_LEN ){
-                error( "Error parsing ghost rules at line %d, char %d: String token exceeded maximum length of %d\n",
-                    p->linenum, p->charnum, MAX_STR_LEN );
+                parser_error( p, "String token exceeded maximum length of %d\n", MAX_STR_LEN );
                 p->error = true;
                 break;
             }
@@ -185,8 +191,7 @@ read_str_token( ght_parser_t *p ){
 
     if ( inquotes && c == EOF ){
         /* unclosed quote */
-        error( "Error parsing ghost rules at line %d, char %d: Unclosed quote: Expected %c but found end of file\n",
-                    p->linenum, p->charnum, quote_char );
+        parser_error( p, "Expected %c but found end of file\n", quote_char );
         p->error = true;
     }
 
@@ -223,8 +228,7 @@ read_double( ght_parser_t *p ){
     /* read the initial digit; this one is required */
     c = peek_char( p );
     if ( !isdigit( c )){
-        error( "Error parsing ghost rules at line %d, char %d: Expected digit but received '%c'\n",
-            p->linenum, p->charnum, c );
+        parser_error( p, "Expected digit but received '%c'\n", c );
         p->error = true;
         return 0.0;
     }
@@ -237,8 +241,7 @@ read_double( ght_parser_t *p ){
         }
 
         if ( idx >= MAX_STR_LEN ){
-            error( "Error parsing ghost rules at line %d, char %d: Number string exceeded maximum length of %d\n",
-                    p->linenum, p->charnum, MAX_STR_LEN );
+            parser_error( p, "Number string exceeded maximum length of %d\n", MAX_STR_LEN );
             p->error = true;
             return 0.0;
         }
@@ -266,11 +269,9 @@ match_char( ght_parser_t *p, int expected ){
     int c = peek_char( p );
     if  ( c != expected ){
         if ( c == EOF ){
-            error( "Error parsing ghost rules at line %d, char %d: Expected '%c' but found end of file\n",
-                p->linenum, p->charnum, expected );
+            parser_error( p, "Expected '%c' but found end of file\n", expected );
         } else {
-            error( "Error parsing ghost rules at line %d, char %d: Expected '%c' but found '%c'\n",
-                p->linenum, p->charnum, expected, c );
+            parser_error( p, "Expected '%c' but found '%c'\n", expected, c );
         }
         p->error = true;
         return false;
@@ -300,8 +301,7 @@ match_optional_char( ght_parser_t *p, int optional ){
 static bool
 match_str_token( ght_parser_t *p ){
     if ( read_str_token( p ) < 1 ) {
-        error( "Error parsing ghost rules at line %d, char %d: Expected string token but found '%c'\n",
-            p->linenum, p->charnum, peek_char( p ));
+        parser_error( p, "Expected string token but found '%c'\n", peek_char( p ));
         p->error = true;
     }
     return !p->error;
@@ -417,8 +417,7 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
             || strncasecmp( "n", p->buffer, MAX_STR_LEN ) == 0) {
             setting = &( r->normal_opacity );
         } else {
-            error( "Error parsing ghost rules at line %d, char %d: Unknown rule parameter '%s'\n",
-                p->linenum, p->charnum, p->buffer );
+            parser_error( p, "Unknown rule parameter '%s'\n", p->buffer );
             p->error = true;
             return false;
         }
@@ -552,7 +551,7 @@ ght_parse_rules_from_file( char *filename, list_t *rules )
 
     p.input = fopen( filename, "r" );
     if ( p.input == NULL ) {
-        error( "Unable to open file with name %s\n" );
+        error( "Unable to open file with name %s\n", filename );
         return false;
     }
 
