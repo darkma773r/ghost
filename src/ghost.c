@@ -418,12 +418,13 @@ load_windows_recursive( ghost_t *ghost, xcb_window_t win )
  * on the matcher itself to speed up window matching.
  */
 static void
-populate_rule_atoms( ghost_t *ghost ){
+populate_rule_atoms( ghost_t *ghost )
+{
     ght_rule_t *rule;
     ght_matcher_t *matcher;
 
-    ght_list_for_each( &(ghost->rules), rule, ght_rule_t ){
-        ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ){
+    ght_list_for_each( &(ghost->rules), rule, ght_rule_t ) {
+        ght_list_for_each( &(rule->matchers), matcher, ght_matcher_t ) {
             matcher->name_atom = atom_for_name( ghost, matcher->name );
         }
     }
@@ -540,32 +541,34 @@ ght_destroy( ghost_t *ghost )
     debug( "ghost cleared\n" );
 }
 
-bool
+int
 ght_load_rule_file( ghost_t *ghost, char *rulefile )
 {
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
     /* load the new rules */
-    if ( ght_parse_rules_from_file( rulefile, &(ghost->rules ))){
+    int count = ght_parse_rules_from_file( rulefile, &(ghost->rules ));
+    if ( count > 0 ) {
         populate_rule_atoms( ghost );
-        return true;
     }
-    return false;
+
+    return count;
 }
 
-bool
+int
 ght_load_rule_str( ghost_t *ghost, char *rulestr )
 {
     /* clear the rules list */
     clear_rule_list( &(ghost->rules) );
 
     /* load the new rules */
-    if ( ght_parse_rules_from_string( rulestr, &(ghost->rules ))){
+    int count = ght_parse_rules_from_string( rulestr, &(ghost->rules ));
+    if ( count > 0 ) {
         populate_rule_atoms( ghost );
-        return true;
     }
-    return false;
+
+    return count;
 }
 
 void
@@ -602,6 +605,99 @@ ght_apply_opacity_settings( ghost_t *ghost, bool consider_focused_states )
     }
 }
 
+/*
+ * Function for handling xcb events from ght_monitor().
+ */
+static void
+handle_event( ghost_t *ghost, xcb_generic_event_t *event )
+{
+    switch ( event->response_type & ~0x80 ) {
+        /* apply settings to new windows */
+        case XCB_CREATE_NOTIFY: {
+            xcb_create_notify_event_t *create_evt =
+                (xcb_create_notify_event_t *) event;
+            debug( "Window created! window= 0x%x\n", create_evt->window );
+
+            /* check if this window matches our rules */
+            ght_window_t *ght_win = check_window( ghost, create_evt->window );
+            if ( ght_win != NULL ) {
+                track_window( ghost, ght_win );
+
+                /* register for focus events from the target window */
+                register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
+
+                /* apply the initial normal opacity */
+                apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+            }
+            break;
+        }
+        /*
+         * This is needed for use with reparenting window managers since we
+         * may not be able to apply opacity settings to the correct window when
+         * the window is first created.
+         */
+        case XCB_REPARENT_NOTIFY: {
+            xcb_reparent_notify_event_t *reparent_evt =
+                (xcb_reparent_notify_event_t *) event;
+            debug( "Window reparented! 0x%x\n", reparent_evt->window );
+
+            /* check if this is a tracked window */
+            ght_window_t *ght_win = find_window( ghost, reparent_evt->window );
+            if ( ght_win != NULL ) {
+                reparent_window( ghost, ght_win, get_top_window( ghost, ght_win->win ));
+
+                /* register for focus events from the target window */
+                register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
+
+                /* apply the initial normal opacity */
+                apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+            }
+            break;
+        }
+        case XCB_FOCUS_IN : {
+            xcb_focus_in_event_t *in =
+                (xcb_focus_in_event_t *) event;
+            debug( "Focus in 0x%x\n", in->event );
+
+            ght_window_t *ght_win = find_window_by_target( ghost, in->event );
+            if ( ght_win != NULL ) {
+                apply_opacity( ghost, ght_win, ght_win->focus_opacity );
+            }
+            break;
+        }
+        case XCB_FOCUS_OUT : {
+            xcb_focus_out_event_t *out =
+                (xcb_focus_out_event_t *) event;
+            debug( "Focus out 0x%x\n", out->event );
+
+            ght_window_t *ght_win = find_window_by_target( ghost, out->event );
+            if ( ght_win != NULL ) {
+                apply_opacity( ghost, ght_win, ght_win->normal_opacity );
+            }
+
+            break;
+        }
+        case XCB_DESTROY_NOTIFY : {
+            xcb_destroy_notify_event_t *destroy_evt =
+                (xcb_destroy_notify_event_t *) event;
+            debug( "Window destroyed 0x%x\n", destroy_evt->window );
+
+            /* try to find the window by id or target id */
+            ght_window_t *ght_win = find_window( ghost, destroy_evt->window );
+            if ( ght_win == NULL ) {
+                ght_win = find_window_by_target( ghost, destroy_evt->window );
+            }
+
+            if ( ght_win != NULL ) {
+                debug( "Untracking window. win= 0x%x, target_win= 0x%x\n",
+                       ght_win->win, ght_win->target_win );
+                untrack_window( ghost, ght_win );
+            }
+            break;
+        }
+    }
+}
+
 void
 ght_monitor( ghost_t *ghost )
 {
@@ -615,94 +711,10 @@ ght_monitor( ghost_t *ghost )
     /* register for child events on the root window */
     register_for_events( ghost, ghost->winroot, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY );
 
-    /* wait for new window events */
+    /* wait for new window events; loop forever */
     xcb_generic_event_t *event;
     while ( event = xcb_wait_for_event( ghost->conn )) {
-        switch ( event->response_type & ~0x80 ) {
-            /* apply settings to new windows */
-            case XCB_CREATE_NOTIFY: {
-                xcb_create_notify_event_t *create_evt =
-                    (xcb_create_notify_event_t *) event;
-                debug( "Window created! 0x%x\n", create_evt->window );
-
-                /* check if this window matches our rules */
-                ght_window_t *ght_win = check_window( ghost, create_evt->window );
-                if ( ght_win != NULL ) {
-                    track_window( ghost, ght_win );
-
-                    /* register for focus events from the target window */
-                    register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
-
-                    /* apply the initial normal opacity */
-                    apply_opacity( ghost, ght_win, ght_win->normal_opacity );
-                }
-                break;
-            }
-            /*
-             * This is needed for use with reparenting window managers since we
-             * may not be able to apply opacity settings to the correct window when
-             * the window is first created.
-             */
-            case XCB_REPARENT_NOTIFY: {
-                xcb_reparent_notify_event_t *reparent_evt =
-                    (xcb_reparent_notify_event_t *) event;
-                debug( "Window reparented! 0x%x\n", reparent_evt->window );
-
-                /* check if this is a tracked window */
-                ght_window_t *ght_win = find_window( ghost, reparent_evt->window );
-                if ( ght_win != NULL ) {
-                    reparent_window( ghost, ght_win, get_top_window( ghost, ght_win->win ));
-
-                    /* register for focus events from the target window */
-                    register_for_events( ghost, ght_win->target_win, XCB_EVENT_MASK_FOCUS_CHANGE );
-
-                    /* apply the initial normal opacity */
-                    apply_opacity( ghost, ght_win, ght_win->normal_opacity );
-                }
-                break;
-            }
-            case XCB_FOCUS_IN : {
-                xcb_focus_in_event_t *in =
-                    (xcb_focus_in_event_t *) event;
-                debug( "Focus in 0x%x\n", in->event );
-
-                ght_window_t *ght_win = find_window_by_target( ghost, in->event );
-                if ( ght_win != NULL ) {
-                    apply_opacity( ghost, ght_win, ght_win->focus_opacity );
-                }
-                break;
-            }
-            case XCB_FOCUS_OUT : {
-                xcb_focus_out_event_t *out =
-                    (xcb_focus_out_event_t *) event;
-                debug( "Focus out 0x%x\n", out->event );
-
-                ght_window_t *ght_win = find_window_by_target( ghost, out->event );
-                if ( ght_win != NULL ) {
-                    apply_opacity( ghost, ght_win, ght_win->normal_opacity );
-                }
-
-                break;
-            }
-            case XCB_DESTROY_NOTIFY : {
-                xcb_destroy_notify_event_t *destroy_evt =
-                    (xcb_destroy_notify_event_t *) event;
-                debug( "Window destroyed 0x%x\n", destroy_evt->window );
-
-                /* try to find the window by id or target id */
-                ght_window_t *ght_win = find_window( ghost, destroy_evt->window );
-                if ( ght_win == NULL ) {
-                    ght_win = find_window_by_target( ghost, destroy_evt->window );
-                }
-
-                if ( ght_win != NULL ) {
-                    debug( "Untracking window. win= 0x%x, target_win= 0x%x\n",
-                           ght_win->win, ght_win->target_win );
-                    untrack_window( ghost, ght_win );
-                }
-                break;
-            }
-        }
+        handle_event( ghost, event );
         free( event );
     }
 }

@@ -241,6 +241,16 @@ has_str_token( ght_parser_t * p ){
 }
 
 /*
+ * Returns true if the parse has more content left to parse. Whitespace
+ * is not considered.
+ */
+static bool
+has_more_content( ght_parser_t * p ){
+    consume_space( p );
+    return peek_char( p ) != EOF;
+}
+
+/*
  * Reads a double from the input. The double is expected to contain at
  * least one digit with an optional decimal point and fraction component.
  * Initial whitespace is ignored and parsing ends at the first non-digit
@@ -476,16 +486,22 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
 }
 
 /*
- * Moves the ght_rule_t items from src to dst.
+ * Moves the ght_rule_t items from src to dst. Returns the
+ * number of items moved.
  */
-static void
+static int
 move_rule_list( list_t *src, list_t *dst ){
     ght_rule_t *rule;
     list_iter_t iter;
+    int count = 0;
+
     ght_list_mod_for_each( src, &iter, rule, ght_rule_t ){
         ght_list_remove( src, rule );
         ght_list_push( dst, rule );
+        count++;
     }
+
+    return count;
 }
 
 /*
@@ -503,7 +519,11 @@ free_rule_list( list_t *list ){
 
 /*
  * Creates and adds a rule for each matcher list found. Expects at least
- * one to be found.
+ * one to be found. A matcher list consists of a space-separated list of
+ * matchers that combine into a single rule with a logic AND operation.
+ * Multiple matcher lists can be separated with commas, as is CSS.
+ * For example, "WM_NAME( abc ) WM_CLASS( xterm ), WM_NAME( def ) WM_CLASS( y )"
+ * contains two separate matcher lists.
  */
 static bool
 add_rule_for_each_matcher_list( ght_parser_t *p, list_t *rules )
@@ -529,7 +549,10 @@ add_rule_for_each_matcher_list( ght_parser_t *p, list_t *rules )
     return !p->error;
 }
 
-static bool
+/*
+ * Reads rules from the parser input and adds them to rules.
+ */
+static int
 read_rule_list( ght_parser_t *p, list_t *rules)
 {
     list_t empty = { NULL, NULL };
@@ -540,9 +563,8 @@ read_rule_list( ght_parser_t *p, list_t *rules)
 
     ght_rule_t *rule;
     ght_rule_t body;
-    int c;
 
-    while ( has_str_token( p )){
+    while ( has_more_content( p )){
         temp_rules = empty;
 
         /* read the rule matchers and body */
@@ -576,26 +598,24 @@ read_rule_list( ght_parser_t *p, list_t *rules)
             info( "    }\n");
 
 #endif /* rule logging */
-
         }
     }
 
     if ( p->error ){
-        /* clean up after errors */
+        /* clean up after errors and return 0 */
         free_rule_list( &finished_rules );
         free_rule_list( &temp_rules );
-    } else {
-        /* copy successfully created rules to the final list */
-        move_rule_list( &finished_rules, rules );
+        return 0;
     }
 
-    return !p->error;
+    /* copy successfully created rules to the final list and return the count */
+    return move_rule_list( &finished_rules, rules );
 }
 
 
 /* ################## Public Methods ################## */
 
-bool
+int
 ght_parse_rules_from_file( char *filename, list_t *rules )
 {
     ght_parser_t p = DEFAULT_PARSER;
@@ -606,23 +626,23 @@ ght_parse_rules_from_file( char *filename, list_t *rules )
         return false;
     }
 
-    read_rule_list( &p, rules );
+    int count = read_rule_list( &p, rules );
 
     fclose( p.input );
 
-    return !p.error;
+    return count;
 }
 
 
-bool
+int
 ght_parse_rules_from_string( char *input, list_t *rules )
 {
     ght_parser_t p = DEFAULT_PARSER;
     p.input = fmemopen( (void *)input, strlen(input), "r" );
 
-    read_rule_list( &p, rules );
+    int count = read_rule_list( &p, rules );
 
     fclose( p.input );
 
-    return !p.error;
+    return count;
 }

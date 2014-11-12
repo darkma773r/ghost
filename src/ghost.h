@@ -144,17 +144,17 @@ void
 ght_destroy( ghost_t *ghost );
 
 /*
- * Loads rules from the given file. Returns a boolean indicating
- * whether or not the operation succeeded.
+ * Loads rules from the given file. Returns the number of
+ * rules successfully loaded from the file.
  */
-bool
+int
 ght_load_rule_file( ghost_t *ghost, char *rulefile );
 
 /*
- * Loads rule from the given string. Returns a boolean indicating
- * whether or not the operation succeeded.
+ * Loads rule from the given string. Returns the number of
+ * rules successfully loaded from the string.
  */
-bool
+int
 ght_load_rule_str( ghost_t *ghost, char *rulestr );
 
 /*

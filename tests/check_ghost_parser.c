@@ -10,7 +10,8 @@
  * Returns a FILE pointer that uses the give C string as input.
  */
 FILE *
-str_file( char *buffer ){
+str_file( char *buffer )
+{
     return fmemopen( (void *)buffer, strlen(buffer), "r" );
 }
 
@@ -366,7 +367,7 @@ START_TEST( test_read_str_token_exceeds_max_length )
     /* arrange */
     char str[MAX_STR_LEN + 100];
     int i;
-    for ( i=0; i < sizeof( str ) - 1; i++ ){
+    for ( i=0; i < sizeof( str ) - 1; i++ ) {
         str[i] = 'A';
     }
     str[ sizeof(str) - 1] = '\0';
@@ -431,6 +432,32 @@ START_TEST( test_has_str_token_failed )
 
     /* assert */
     ck_assert_int_eq( false, result );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_has_more_content )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "#wxy\n"
+                             "#ghe\n"
+                             "a\n"
+                             "#xyz   \n"
+                             "b\n"
+                             "#ending lines" );
+
+    /* act/assert */
+    ck_assert_int_eq( true, has_more_content( &parser ));
+    ck_assert_int_eq( 'a', get_char( &parser ));
+
+    ck_assert_int_eq( true, has_more_content( &parser ));
+    ck_assert_int_eq( 'b', get_char( &parser ));
+
+    ck_assert_int_eq( false, has_more_content( &parser ));
+    ck_assert_int_eq( EOF, get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -518,7 +545,7 @@ START_TEST( test_read_double_number_exceeds_max_str_len )
     /* arrange */
     char str[MAX_STR_LEN + 100];
     int i;
-    for ( i=0; i < sizeof( str ) - 1; i++ ){
+    for ( i=0; i < sizeof( str ) - 1; i++ ) {
         str[i] = '9';
     }
     str[ sizeof(str) - 1] = '\0';
@@ -788,7 +815,7 @@ START_TEST( test_match_str_token_failed_exceeds_max_length )
     /* arrange */
     char str[MAX_STR_LEN + 100];
     int i;
-    for ( i=0; i < sizeof( str ) - 1; i++ ){
+    for ( i=0; i < sizeof( str ) - 1; i++ ) {
         str[i] = 'A';
     }
     str[ sizeof(str) - 1] = '\0';
@@ -1202,10 +1229,10 @@ START_TEST( test_read_rule_list )
 
 
     /* act */
-    bool result = read_rule_list( &parser, &rules );
+    int result = read_rule_list( &parser, &rules );
 
     /* assert */
-    ck_assert_int_eq( true, result );
+    ck_assert_int_eq( 2, result );
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
@@ -1253,10 +1280,10 @@ START_TEST( test_read_rule_list_combined_rule_body )
     ght_matcher_t *am, *bm;
 
     /* act */
-    bool result = read_rule_list( &parser, &rules );
+    int result = read_rule_list( &parser, &rules );
 
     /* assert */
-    ck_assert_int_eq( true, result );
+    ck_assert_int_eq( 2, result );
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
@@ -1304,10 +1331,10 @@ START_TEST( test_read_rule_list_empty )
     ght_matcher_t *am, *bm;
 
     /* act */
-    bool result = read_rule_list( &parser, &rules );
+    int result = read_rule_list( &parser, &rules );
 
     /* assert */
-    ck_assert_int_eq( true, result );
+    ck_assert_int_eq( 0, result );
 
     ck_assert_ptr_eq( NULL, rules.head );
     ck_assert_ptr_eq( NULL, rules.tail );
@@ -1331,10 +1358,10 @@ START_TEST( test_read_rule_list_failed_parsing )
     ght_matcher_t *am, *bm;
 
     /* act */
-    bool result = read_rule_list( &parser, &rules );
+    int result = read_rule_list( &parser, &rules );
 
     /* assert */
-    ck_assert_int_eq( false, result );
+    ck_assert_int_eq( 0, result );
 
     ck_assert_ptr_eq( NULL, rules.head );
     ck_assert_ptr_eq( NULL, rules.tail );
@@ -1349,21 +1376,22 @@ END_TEST
 START_TEST( test_ght_parse_rules_from_string )
 {
     /* arrange */
-    ght_parser_t parser = DEFAULT_PARSER;
-    parser.input = str_file( "#comment \n#another one \n"
-                            "WM_CLASS(xterm),\nWM_OTHER(Abc) {f:0.2;n:1;}\n"
-                            "WM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
-
     list_t rules = { NULL, NULL };
 
     ght_rule_t *a, *b, *c;
     ght_matcher_t *am, *bm, *cm1, *cm2;
 
     /* act */
-    bool result = read_rule_list( &parser, &rules );
+    int result = ght_parse_rules_from_string(
+                     "#comment \n"
+                     "#another comment \n"
+                     "WM_CLASS(xterm),\n"
+                     "WM_OTHER(Abc) {f:0.2;n:1;}\n"
+                     "WM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}",
+                     &rules );
 
     /* assert */
-    ck_assert_int_eq( true, result );
+    ck_assert_int_eq( 3, result );
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
@@ -1392,8 +1420,6 @@ START_TEST( test_ght_parse_rules_from_string )
     ck_assert_str_eq( "WM_OTHER", bm->name );
     ck_assert_str_eq( "Abc", bm->value );
 
-    ck_assert_int_eq( false, parser.error );
-
     /* check the third rule */
     c = (ght_rule_t *) rules.tail;
     ck_assert_ptr_ne( NULL, c );
@@ -1411,79 +1437,76 @@ START_TEST( test_ght_parse_rules_from_string )
     cm2 = (ght_matcher_t *) c->matchers.tail;
     ck_assert_str_eq( "WM_NAME", cm2->name );
     ck_assert_str_eq( "def", cm2->value );
-
-    ck_assert_int_eq( false, parser.error );
-
-    /* clean up */
-    fclose( parser.input );
 }
 END_TEST
 
 Suite *
 ghost_parser_suite()
 {
-	Suite *suite;
-	TCase *tc_input, *tc_parsing;
+    Suite *suite;
+    TCase *tc_input, *tc_parsing;
 
-	/* build the suite */
-	suite = suite_create( "ghost_parser" );
+    /* build the suite */
+    suite = suite_create( "ghost_parser" );
 
-	/* build the IO test case */
-	tc_input = tcase_create( "Input" );
+    /* build the IO test case */
+    tc_input = tcase_create( "Input" );
 
-	/* add the individual tests */
-	tcase_add_test( tc_input, test_default_parser );
+    /* add the individual tests */
+    tcase_add_test( tc_input, test_default_parser );
 
-	tcase_add_test( tc_input, test_get_char );
-	tcase_add_test( tc_input, test_get_char_tracks_position );
-	tcase_add_test( tc_input, test_get_char_skips_lines_starting_with_pound );
+    tcase_add_test( tc_input, test_get_char );
+    tcase_add_test( tc_input, test_get_char_tracks_position );
+    tcase_add_test( tc_input, test_get_char_skips_lines_starting_with_pound );
 
-	tcase_add_test( tc_input, test_peek_char );
-	tcase_add_test( tc_input, test_peek_char_skips_lines_starting_with_pound );
+    tcase_add_test( tc_input, test_peek_char );
+    tcase_add_test( tc_input, test_peek_char_skips_lines_starting_with_pound );
 
-	tcase_add_test( tc_input, test_is_valid_str_char );
+    tcase_add_test( tc_input, test_is_valid_str_char );
 
-	tcase_add_test( tc_input, test_is_valid_str_start_char );
+    tcase_add_test( tc_input, test_is_valid_str_start_char );
 
-	tcase_add_test( tc_input, test_read_str_token );
-	tcase_add_test( tc_input, test_read_str_token_ignores_initial_spaces );
-	tcase_add_test( tc_input, test_read_str_token_double_quotes );
-	tcase_add_test( tc_input, test_read_str_token_single_quotes );
-	tcase_add_test( tc_input, test_read_str_token_empty_token );
-	tcase_add_test( tc_input, test_read_str_token_multiple_calls );
-	tcase_add_test( tc_input, test_read_str_token_exceeds_max_length );
-	tcase_add_test( tc_input, test_read_str_token_unclosed_quote );
+    tcase_add_test( tc_input, test_read_str_token );
+    tcase_add_test( tc_input, test_read_str_token_ignores_initial_spaces );
+    tcase_add_test( tc_input, test_read_str_token_double_quotes );
+    tcase_add_test( tc_input, test_read_str_token_single_quotes );
+    tcase_add_test( tc_input, test_read_str_token_empty_token );
+    tcase_add_test( tc_input, test_read_str_token_multiple_calls );
+    tcase_add_test( tc_input, test_read_str_token_exceeds_max_length );
+    tcase_add_test( tc_input, test_read_str_token_unclosed_quote );
 
-	tcase_add_test( tc_input, test_has_str_token );
-	tcase_add_test( tc_input, test_has_str_token_failed );
+    tcase_add_test( tc_input, test_has_str_token );
+    tcase_add_test( tc_input, test_has_str_token_failed );
 
-	tcase_add_test( tc_input, test_read_double );
-	tcase_add_test( tc_input, test_read_double_ignores_initial_spaces );
-	tcase_add_test( tc_input, test_read_double_stops_at_first_non_digit );
-	tcase_add_test( tc_input, test_read_double_multiple_decimal_points );
-	tcase_add_test( tc_input, test_read_double_number_exceeds_max_str_len );
-	tcase_add_test( tc_input, test_read_double_no_decimal );
-	tcase_add_test( tc_input, test_read_double_no_digits_fails );
+    tcase_add_test( tc_input, test_has_more_content );
 
-	tcase_add_test( tc_input, test_consume_space );
-	tcase_add_test( tc_input, test_consume_space_no_space_found );
+    tcase_add_test( tc_input, test_read_double );
+    tcase_add_test( tc_input, test_read_double_ignores_initial_spaces );
+    tcase_add_test( tc_input, test_read_double_stops_at_first_non_digit );
+    tcase_add_test( tc_input, test_read_double_multiple_decimal_points );
+    tcase_add_test( tc_input, test_read_double_number_exceeds_max_str_len );
+    tcase_add_test( tc_input, test_read_double_no_decimal );
+    tcase_add_test( tc_input, test_read_double_no_digits_fails );
 
-	tcase_add_test( tc_input, test_match_char );
-	tcase_add_test( tc_input, test_match_char_spaces );
-	tcase_add_test( tc_input, test_match_char_failed );
-	tcase_add_test( tc_input, test_match_char_eof );
+    tcase_add_test( tc_input, test_consume_space );
+    tcase_add_test( tc_input, test_consume_space_no_space_found );
 
-	tcase_add_test( tc_input, test_match_optional_char );
-	tcase_add_test( tc_input, test_match_optional_char_failed );
+    tcase_add_test( tc_input, test_match_char );
+    tcase_add_test( tc_input, test_match_char_spaces );
+    tcase_add_test( tc_input, test_match_char_failed );
+    tcase_add_test( tc_input, test_match_char_eof );
 
-	tcase_add_test( tc_input, test_match_str_token );
-	tcase_add_test( tc_input, test_match_str_token_spaces );
-	tcase_add_test( tc_input, test_match_str_token_failed );
-	tcase_add_test( tc_input, test_match_str_token_failed_exceeds_max_length );
-	tcase_add_test( tc_input, test_match_str_token_unclosed_quote );
+    tcase_add_test( tc_input, test_match_optional_char );
+    tcase_add_test( tc_input, test_match_optional_char_failed );
+
+    tcase_add_test( tc_input, test_match_str_token );
+    tcase_add_test( tc_input, test_match_str_token_spaces );
+    tcase_add_test( tc_input, test_match_str_token_failed );
+    tcase_add_test( tc_input, test_match_str_token_failed_exceeds_max_length );
+    tcase_add_test( tc_input, test_match_str_token_unclosed_quote );
 
 
-	suite_add_tcase( suite, tc_input );
+    suite_add_tcase( suite, tc_input );
 
     /* build the Parsing test case */
     tc_parsing = tcase_create( "Parsing" );
@@ -1515,21 +1538,21 @@ ghost_parser_suite()
 
     suite_add_tcase( suite, tc_parsing );
 
-	return suite;
+    return suite;
 }
 
 int main(void)
 {
-	int number_failed;
-	Suite *suite;
-	SRunner *runner;
+    int number_failed;
+    Suite *suite;
+    SRunner *runner;
 
-	suite = ghost_parser_suite();
+    suite = ghost_parser_suite();
     runner = srunner_create( suite );
 
     srunner_run_all( runner, CK_NORMAL );
     number_failed = srunner_ntests_failed( runner );
     srunner_free( runner );
 
-	return number_failed == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return number_failed == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

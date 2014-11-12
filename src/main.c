@@ -115,7 +115,7 @@ main( int argc, char **argv )
     info( "[main] ghost initialized\n", ghost->conn );
 
     /* load the rules */
-    bool loaded = false;
+    int loaded = 0;
     if ( args.rulefile != NULL ) {
         info( "[main] Loading rules from file %s\n", args.rulefile );
         loaded = ght_load_rule_file( ghost, args.rulefile );
@@ -125,8 +125,8 @@ main( int argc, char **argv )
         loaded = ght_load_rule_str( ghost, args.rulestr );
     }
 
-    if ( !loaded ) {
-        error( "Failed to load ghost rules! Program exiting.\n" );
+    if ( loaded < 1 ) {
+        error( "No rules loaded! Program exiting.\n" );
         exit( EXIT_FAILURE );
     }
 
