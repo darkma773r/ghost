@@ -18,6 +18,11 @@
 #define LOG_LEVEL_INFO 3
 #define LOG_LEVEL_DEBUG 4
 
+/*
+ * Set the logging level for the application here.
+ */
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+
 #if LOG_LEVEL >= LOG_LEVEL_ERROR
     #define error( ... ) do{ fprintf( stderr, "ERROR: "); fprintf( stderr, __VA_ARGS__ ); } while(0)
 #else
@@ -25,13 +30,13 @@
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_WARN
-    #define warn( ... ) do{ fprintf( stderr, "WARN: "); fprintf( stderr, __VA_ARGS__ ); } while(0)
+    #define warn( ... ) do{ fprintf( stderr, "WARN : "); fprintf( stderr, __VA_ARGS__ ); } while(0)
 #else
     #define warn( ... )
 #endif
 
 #if LOG_LEVEL >= LOG_LEVEL_INFO
-    #define info( ... ) do{ fprintf( stdout, "INFO: " ); fprintf( stdout, __VA_ARGS__ ); } while(0)
+    #define info( ... ) do{ fprintf( stdout, "INFO : " ); fprintf( stdout, __VA_ARGS__ ); } while(0)
 #else
     #define info( ... )
 #endif

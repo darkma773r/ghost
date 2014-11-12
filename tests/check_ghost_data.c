@@ -2,8 +2,6 @@
  * Unit test for the ghost_data module.
  */
 
-#define LOG_LEVEL 4
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

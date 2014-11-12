@@ -4,8 +4,6 @@
  * windows in the X11 windowing system.
  */
 
-#define LOG_LEVEL 0
-
 #include <string.h>
 #include "ghost.h"
 
@@ -34,7 +32,8 @@ usage()
     fprintf( stderr,
              "\n##### GHOST #####\nA simple program for adding transparency to X windows.\n");
     fprintf( stderr,
-             "Written by Matt Juntunen, 2014\n\n");
+             "Written by Matt Juntunen, 2014\n");
+    fprintf( stderr, "(Log level set to %d)\n\n", LOG_LEVEL );
     fprintf( stderr,
              "USAGE: ghost [OPTIONS] [opacity rule string]\n" );
     fprintf( stderr,

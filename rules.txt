@@ -1,0 +1,12 @@
+# rules.txt
+#
+
+WM_CLASS ( xterm ) {
+	focus: 0.9;
+	normal: 0.7;
+}
+
+WM_CLASS ( xclock ) {
+	focus: 0.5;
+	normal: 0.5;
+}

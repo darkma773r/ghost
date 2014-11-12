@@ -3,8 +3,6 @@
  * Unit tests for the ghost rule parsing logic.
  */
 
-#define LOG_LEVEL 4
-
 #include <check.h>
 #include "../src/ghost_parser.c"
 
@@ -24,13 +22,13 @@ START_TEST( test_default_parser )
     ght_parser_t parser = DEFAULT_PARSER;
 
     /* act */
-    ck_assert( parser.input == NULL );
-    ck_assert( parser.lastchar == 0 );
-    ck_assert( parser.uselastchar == false );
-    ck_assert( parser.linenum == 1 );
-    ck_assert( parser.charnum == 0 );
-    ck_assert( parser.done == false );
-    ck_assert( parser.error == false );
+    ck_assert_ptr_eq( NULL, parser.input );
+    ck_assert_int_eq( false, parser.done );
+    ck_assert_int_eq( false, parser.newline );
+    ck_assert_int_eq( false, parser.uselastchar );
+    ck_assert_int_eq( 0, parser.linenum );
+    ck_assert_int_eq( 0, parser.charnum );
+    ck_assert_int_eq( false, parser.error );
 }
 END_TEST
 
@@ -59,48 +57,78 @@ START_TEST( test_get_char_tracks_position )
     parser.input = str_file( "a\n\nbcd" );
 
     /* act/assert */
-    ck_assert_int_eq( 1, parser.linenum );
+    ck_assert_int_eq( 0, parser.linenum );
     ck_assert_int_eq( 0, parser.charnum );
 
     ck_assert_int_eq( 'a', get_char( &parser ));
     ck_assert_int_eq( 1, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( '\n', get_char( &parser ));
     ck_assert_int_eq( 1, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( '\n', get_char( &parser ));
     ck_assert_int_eq( 2, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( 'b', get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( 'c', get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( 'd', get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 3, parser.charnum );
-    ck_assert_int_eq( false, parser.done );
 
     ck_assert_int_eq( EOF, get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 4, parser.charnum );
-    ck_assert_int_eq( true, parser.done );
 
     ck_assert_int_eq( EOF, get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 4, parser.charnum );
-    ck_assert_int_eq( true, parser.done );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_get_char_skips_lines_starting_with_pound )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "#wxy\n"
+                             "#ghe\n"
+                             "a\n"
+                             "#xyz   \n"
+                             "b\n"
+                             "#ending lines" );
+
+    /* act/assert */
+    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert_int_eq( 3, parser.linenum );
+    ck_assert_int_eq( 1, parser.charnum );
+
+    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert_int_eq( 3, parser.linenum );
+    ck_assert_int_eq( 2, parser.charnum );
+
+    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert_int_eq( 5, parser.linenum );
+    ck_assert_int_eq( 1, parser.charnum );
+
+    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert_int_eq( 5, parser.linenum );
+    ck_assert_int_eq( 2, parser.charnum );
+
+    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert_int_eq( 6, parser.linenum );
+    ck_assert_int_eq( 14, parser.charnum );
 
     /* clean up */
     fclose( parser.input );
@@ -138,9 +166,40 @@ START_TEST( test_peek_char )
     ck_assert_int_eq( EOF, peek_char( &parser ));
     ck_assert_int_eq( EOF, get_char( &parser ));
 
-    ck_assert_int_eq( true, parser.done );
     ck_assert_int_eq( 2, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
+
+    /* clean up */
+    fclose( parser.input );
+}
+END_TEST
+
+START_TEST( test_peek_char_skips_lines_starting_with_pound )
+{
+    /* arrange */
+    ght_parser_t parser = DEFAULT_PARSER;
+    parser.input = str_file( "#wxy\n"
+                             "#ghe\n"
+                             "a\n"
+                             "#xyz   \n"
+                             "b\n"
+                             "#ending lines" );
+
+    /* act/assert */
+    ck_assert_int_eq( 'a', peek_char( &parser ));
+    ck_assert_int_eq( 'a', get_char( &parser ));
+
+    ck_assert_int_eq( '\n', peek_char( &parser ));
+    ck_assert_int_eq( '\n', get_char( &parser ));
+
+    ck_assert_int_eq( 'b', peek_char( &parser ));
+    ck_assert_int_eq( 'b', get_char( &parser ));
+
+    ck_assert_int_eq( '\n', peek_char( &parser ));
+    ck_assert_int_eq( '\n', get_char( &parser ));
+
+    ck_assert_int_eq( EOF, peek_char( &parser ));
+    ck_assert_int_eq( EOF, get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -1291,7 +1350,9 @@ START_TEST( test_ght_parse_rules_from_string )
 {
     /* arrange */
     ght_parser_t parser = DEFAULT_PARSER;
-    parser.input = str_file( "WM_CLASS(xterm),\nWM_OTHER(Abc) {f:0.2;n:1;}\nWM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
+    parser.input = str_file( "#comment \n#another one \n"
+                            "WM_CLASS(xterm),\nWM_OTHER(Abc) {f:0.2;n:1;}\n"
+                            "WM_CLASS(thunar) WM_NAME(def) {focus:0.8;normal:0.4;}" );
 
     list_t rules = { NULL, NULL };
 
@@ -1375,8 +1436,10 @@ ghost_parser_suite()
 
 	tcase_add_test( tc_input, test_get_char );
 	tcase_add_test( tc_input, test_get_char_tracks_position );
+	tcase_add_test( tc_input, test_get_char_skips_lines_starting_with_pound );
 
 	tcase_add_test( tc_input, test_peek_char );
+	tcase_add_test( tc_input, test_peek_char_skips_lines_starting_with_pound );
 
 	tcase_add_test( tc_input, test_is_valid_str_char );
 

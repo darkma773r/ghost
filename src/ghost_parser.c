@@ -18,6 +18,9 @@
 
 /* Define character constants */
 enum {
+    POUND = '#',
+    NEW_LINE = '\n',
+
     PAREN_OPEN = '(',
     PAREN_END = ')',
 
@@ -40,13 +43,15 @@ enum {
 typedef struct {
     FILE *input;
 
+    bool done;
+    bool newline;
+
     int lastchar;
     bool uselastchar;
 
     int linenum;
     int charnum;
 
-    bool done;
     bool error;
 
     char buffer[MAX_STR_LEN + 1];
@@ -54,15 +59,41 @@ typedef struct {
 } ght_parser_t;
 
 /* Default ght_parser_t value for initialization. */
-static const ght_parser_t DEFAULT_PARSER = {
-    NULL,
-    0,
-    false,
-    1, /* line numbers start at 1 */
-    0, /* char numbering starts at 1; this indicates the position before the first char */
-    false,
-    false
-};
+static const ght_parser_t DEFAULT_PARSER = { 0 };
+
+/*
+ * Returns the next character from the input stream and updates
+ * the parser position variables.
+ */
+static char
+read_input( ght_parser_t *p ){
+    /* do nothing if we're already done */
+    if ( p->done ){
+        return EOF;
+    }
+
+    /*
+     * Account for new lines here since they only have an effect
+     * after we've passed them. Also handle file start.
+     */
+    if ( p->linenum == 0 || p->newline ){
+        p->newline = false;
+
+        p->linenum++;
+        p->charnum = 0;
+    }
+
+    /* read the next char */
+    int c = fgetc( p->input );
+
+    /* update state */
+    p->charnum++;
+    p->newline = ( c == NEW_LINE );
+    p->done = ( c == EOF );
+    p->lastchar = c;
+
+    return c;
+}
 
 /*
  * Returns the next character from the input stream and advances the
@@ -77,23 +108,21 @@ get_char( ght_parser_t *p )
         return p->lastchar;
     }
 
-    int c = fgetc( p->input );
+    int c = read_input( p );
 
-    /* update the parser position variables */
-    if ( p->lastchar == '\n' ){
-        /* start of new line */
-        p->linenum++;
-        p->charnum = 1;
-    } else if ( p->lastchar != EOF ){
-        /* advance character counter; do not advance when past content */
-        p->charnum++;
+    /*
+     * Skip comment lines, indicated by a pound sign on the
+     * first character on the line.
+     */
+    while ( p->charnum == 1 && c == POUND ){
+        /* advance to the end of the line */
+        while ( (c = read_input( p )) != NEW_LINE  && c != EOF );
+
+        /* consume the new line ending the comment */
+        if ( c == NEW_LINE ){
+            c = read_input( p );
+        }
     }
-
-    if ( c == EOF ){
-        p->done = true;
-    }
-
-    p->lastchar = c;
 
     return c;
 }
