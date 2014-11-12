@@ -130,6 +130,8 @@ main( int argc, char **argv )
         exit( EXIT_FAILURE );
     }
 
+    info( "[main] Done parsing. Loaded %d opacity rules.\n", loaded );
+
     /* load windows */
     info( "[main] Loading windows...\n" );
 
@@ -147,6 +149,8 @@ main( int argc, char **argv )
         /* down the rabbit hole, never to return ... */
         ght_monitor( ghost );
     }
+
+    ght_destroy( ghost );
 
     return EXIT_SUCCESS;
 }
