@@ -18,10 +18,6 @@
 #define LOG_LEVEL_INFO 3
 #define LOG_LEVEL_DEBUG 4
 
-#ifndef LOG_LEVEL
-    #define LOG_LEVEL LOG_LEVEL_DEBUG
-#endif
-
 #if LOG_LEVEL >= LOG_LEVEL_ERROR
     #define error( ... ) do{ fprintf( stderr, "ERROR: "); fprintf( stderr, __VA_ARGS__ ); } while(0)
 #else

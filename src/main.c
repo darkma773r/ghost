@@ -4,7 +4,7 @@
  * windows in the X11 windowing system.
  */
 
-#define LOG_LEVEL 4
+#define LOG_LEVEL 0
 
 #include <string.h>
 #include "ghost.h"

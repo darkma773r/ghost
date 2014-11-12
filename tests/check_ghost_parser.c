@@ -3,6 +3,8 @@
  * Unit tests for the ghost rule parsing logic.
  */
 
+#define LOG_LEVEL 4
+
 #include <check.h>
 #include "../src/ghost_parser.c"
 
