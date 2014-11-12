@@ -226,8 +226,9 @@ check_window_against_rule( ghost_t *ghost, xcb_window_t win, ght_rule_t *rule )
         win_value = get_string_property( ghost,
                                          win, matcher->name_atom );
 
+        /* don't consider case in string compares here */
         matched = win_value != NULL
-                  && strncmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
+                  && strncasecmp( win_value, matcher->value, MAX_STR_LEN ) == 0;
 
         free( win_value );
 
