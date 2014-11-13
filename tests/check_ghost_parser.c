@@ -23,7 +23,7 @@ START_TEST( test_default_parser )
     ght_parser_t parser = DEFAULT_PARSER;
 
     /* act */
-    ck_assert_ptr_eq( NULL, parser.input );
+    ck_assert( NULL == parser.input );
     ck_assert_int_eq( false, parser.done );
     ck_assert_int_eq( false, parser.newline );
     ck_assert_int_eq( false, parser.uselastchar );
@@ -40,11 +40,11 @@ START_TEST( test_get_char )
     parser.input = str_file( "abc" );
 
     /* act/assert */
-    ck_assert_int_eq( 'a', get_char( &parser ));
-    ck_assert_int_eq( 'b', get_char( &parser ));
-    ck_assert_int_eq( 'c', get_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
+    ck_assert( 'c' == get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -61,35 +61,35 @@ START_TEST( test_get_char_tracks_position )
     ck_assert_int_eq( 0, parser.linenum );
     ck_assert_int_eq( 0, parser.charnum );
 
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
     ck_assert_int_eq( 1, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
     ck_assert_int_eq( 1, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
     ck_assert_int_eq( 2, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
 
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
 
-    ck_assert_int_eq( 'c', get_char( &parser ));
+    ck_assert( 'c' == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
 
-    ck_assert_int_eq( 'd', get_char( &parser ));
+    ck_assert( 'd' == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 3, parser.charnum );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 4, parser.charnum );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 4, parser.charnum );
 
@@ -110,24 +110,24 @@ START_TEST( test_get_char_skips_lines_starting_with_pound )
                              "#ending lines" );
 
     /* act/assert */
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
     ck_assert_int_eq( 3, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
 
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
     ck_assert_int_eq( 5, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
     ck_assert_int_eq( 5, parser.linenum );
     ck_assert_int_eq( 2, parser.charnum );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
     ck_assert_int_eq( 6, parser.linenum );
     ck_assert_int_eq( 14, parser.charnum );
 
@@ -143,29 +143,29 @@ START_TEST( test_peek_char )
     parser.input = str_file( "abc\n" );
 
     /* act/assert */
-    ck_assert_int_eq( 'a', peek_char( &parser ));
-    ck_assert_int_eq( 'a', peek_char( &parser ));
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == peek_char( &parser ));
+    ck_assert( 'a' == peek_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
-    ck_assert_int_eq( 'b', peek_char( &parser ));
-    ck_assert_int_eq( 'b', peek_char( &parser ));
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == peek_char( &parser ));
+    ck_assert( 'b' == peek_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
-    ck_assert_int_eq( 'c', peek_char( &parser ));
-    ck_assert_int_eq( 'c', peek_char( &parser ));
-    ck_assert_int_eq( 'c', get_char( &parser ));
+    ck_assert( 'c' == peek_char( &parser ));
+    ck_assert( 'c' == peek_char( &parser ));
+    ck_assert( 'c' == get_char( &parser ));
 
-    ck_assert_int_eq( '\n', peek_char( &parser ));
-    ck_assert_int_eq( '\n', peek_char( &parser ));
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == peek_char( &parser ));
+    ck_assert( '\n' == peek_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
 
-    ck_assert_int_eq( EOF, peek_char( &parser ));
-    ck_assert_int_eq( EOF, peek_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == peek_char( &parser ));
+    ck_assert( EOF == peek_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
-    ck_assert_int_eq( EOF, peek_char( &parser ));
-    ck_assert_int_eq( EOF, peek_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == peek_char( &parser ));
+    ck_assert( EOF == peek_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     ck_assert_int_eq( 2, parser.linenum );
     ck_assert_int_eq( 1, parser.charnum );
@@ -187,20 +187,20 @@ START_TEST( test_peek_char_skips_lines_starting_with_pound )
                              "#ending lines" );
 
     /* act/assert */
-    ck_assert_int_eq( 'a', peek_char( &parser ));
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == peek_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
-    ck_assert_int_eq( '\n', peek_char( &parser ));
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == peek_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
 
-    ck_assert_int_eq( 'b', peek_char( &parser ));
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == peek_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
-    ck_assert_int_eq( '\n', peek_char( &parser ));
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == peek_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
 
-    ck_assert_int_eq( EOF, peek_char( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == peek_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -252,7 +252,7 @@ START_TEST( test_read_str_token )
     ck_assert_int_eq( 3, len );
     ck_assert_str_eq( "abc", parser.buffer );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -272,7 +272,7 @@ START_TEST( test_read_str_token_ignores_initial_spaces )
     ck_assert_int_eq( 3, len );
     ck_assert_str_eq( "abc", parser.buffer );
 
-    ck_assert_int_eq( '\n', get_char( &parser ));
+    ck_assert( '\n' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -292,7 +292,7 @@ START_TEST( test_read_str_token_double_quotes )
     ck_assert_int_eq( 7, len );
     ck_assert_str_eq( "ab'' c\n", parser.buffer );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -313,7 +313,7 @@ START_TEST( test_read_str_token_single_quotes )
     ck_assert_int_eq( 7, len );
     ck_assert_str_eq( "ab\"\" c\n", parser.buffer );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -333,7 +333,7 @@ START_TEST( test_read_str_token_empty_token )
     ck_assert_int_eq( 0, len );
     ck_assert_str_eq( "", parser.buffer );
 
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -347,15 +347,19 @@ START_TEST( test_read_str_token_multiple_calls )
     parser.input = str_file( "abc(de " );
 
     /* act/assert */
-    ck_assert_int_eq( 3, read_str_token( &parser ));
+    int len = read_str_token( &parser );
+
+    ck_assert_int_eq( 3, len );
     ck_assert_str_eq( "abc", parser.buffer );
 
-    ck_assert_int_eq( '(', get_char( &parser ));
+    ck_assert( '(' == get_char( &parser ));
 
-    ck_assert_int_eq( 2, read_str_token( &parser ));
+    len = read_str_token( &parser );
+
+    ck_assert_int_eq( 2, len ); 
     ck_assert_str_eq( "de", parser.buffer );
 
-    ck_assert_int_eq( ' ', get_char( &parser ));
+    ck_assert( ' ' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -451,13 +455,13 @@ START_TEST( test_has_more_content )
 
     /* act/assert */
     ck_assert_int_eq( true, has_more_content( &parser ));
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
     ck_assert_int_eq( true, has_more_content( &parser ));
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
     ck_assert_int_eq( false, has_more_content( &parser ));
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -614,7 +618,7 @@ START_TEST( test_consume_space )
     consume_space( &parser );
 
     /* assert */
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -631,7 +635,7 @@ START_TEST( test_consume_space_no_space_found )
     consume_space( &parser );
 
     /* assert */
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -650,7 +654,7 @@ START_TEST( test_match_char )
     /* assert */
     ck_assert_int_eq( true, result );
     ck_assert_int_eq( false, parser.error );
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -669,7 +673,7 @@ START_TEST( test_match_char_spaces )
     /* assert */
     ck_assert_int_eq( true, result );
     ck_assert_int_eq( false, parser.error );
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -688,7 +692,7 @@ START_TEST( test_match_char_failed )
     /* assert */
     ck_assert_int_eq( false, result );
     ck_assert_int_eq( true, parser.error );
-    ck_assert_int_eq( 'c', get_char( &parser ));
+    ck_assert( 'c' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -708,7 +712,7 @@ START_TEST( test_match_char_eof )
     /* assert */
     ck_assert_int_eq( false, result );
     ck_assert_int_eq( true, parser.error );
-    ck_assert_int_eq( EOF, get_char( &parser ));
+    ck_assert( EOF == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -727,7 +731,7 @@ START_TEST( test_match_optional_char )
     /* assert */
     ck_assert_int_eq( true, result );
     ck_assert_int_eq( false, parser.error );
-    ck_assert_int_eq( 'b', get_char( &parser ));
+    ck_assert( 'b' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -746,7 +750,7 @@ START_TEST( test_match_optional_char_failed )
     /* assert */
     ck_assert_int_eq( false, result );
     ck_assert_int_eq( false, parser.error );
-    ck_assert_int_eq( 'a', get_char( &parser ));
+    ck_assert( 'a' == get_char( &parser ));
 
     /* clean up */
     fclose( parser.input );
@@ -868,7 +872,7 @@ START_TEST( test_read_matcher )
     ght_matcher_t *matcher = read_matcher( &parser );
 
     /* assert */
-    ck_assert_ptr_ne( NULL, matcher );
+    ck_assert( NULL != matcher );
 
     ck_assert_str_eq( "WM_CLASS", matcher->name );
     ck_assert_str_eq( "xterm", matcher->value );
@@ -891,7 +895,7 @@ START_TEST( test_read_matcher_complex )
     ght_matcher_t *matcher = read_matcher( &parser );
 
     /* assert */
-    ck_assert_ptr_ne( NULL, matcher );
+    ck_assert( NULL != matcher );
 
     ck_assert_str_eq( "unusual( )", matcher->name );
     ck_assert_str_eq( "complex term", matcher->value );
@@ -914,7 +918,7 @@ START_TEST( test_read_matcher_failed )
     ght_matcher_t *matcher = read_matcher( &parser );
 
     /* assert */
-    ck_assert_ptr_eq( NULL, matcher );
+    ck_assert( NULL == matcher );
     ck_assert_int_eq( true, parser.error );
 
     /* clean up */
@@ -925,7 +929,6 @@ END_TEST
 
 START_TEST( test_read_matcher_list )
 {
-    printf( "starting test_read_matcher_list\n" );
     /* arrange */
     ght_parser_t parser = DEFAULT_PARSER;
     parser.input = str_file( "WM_CLASS(xterm) WM_OTHER ( 'sp a ces' )\n\"SP ACE's\" ( abc ) ");
@@ -943,13 +946,13 @@ START_TEST( test_read_matcher_list )
     ck_assert_int_eq( true, result );
 
     a = (ght_matcher_t *) rule.matchers.head;
-    ck_assert_ptr_ne( NULL, a );
+    ck_assert( NULL != a );
 
     b = (ght_matcher_t *) rule.matchers.head->next;
-    ck_assert_ptr_ne( NULL, b );
+    ck_assert( NULL != b );
 
     c = (ght_matcher_t *) rule.matchers.tail;
-    ck_assert_ptr_ne( NULL, c );
+    ck_assert( NULL != c );
 
     ck_assert_str_eq( "WM_CLASS", a->name );
     ck_assert_str_eq( "xterm", a->value );
@@ -986,8 +989,8 @@ START_TEST( test_read_matcher_list_partial_failure )
     /* assert */
     ck_assert_int_eq( false, result );
 
-    ck_assert_ptr_eq( NULL, rule.matchers.head );
-    ck_assert_ptr_eq( NULL, rule.matchers.tail );
+    ck_assert( NULL == rule.matchers.head );
+    ck_assert( NULL == rule.matchers.tail );
 
     ck_assert_int_eq( true, parser.error );
 
@@ -1012,8 +1015,8 @@ START_TEST( test_read_matcher_list_total_failure )
     /* assert */
     ck_assert_int_eq( false, result );
 
-    ck_assert_ptr_eq( NULL, rule.matchers.head );
-    ck_assert_ptr_eq( NULL, rule.matchers.tail );
+    ck_assert( NULL == rule.matchers.head );
+    ck_assert( NULL == rule.matchers.tail );
 
     ck_assert_int_eq( true, parser.error );
 
@@ -1227,7 +1230,6 @@ START_TEST( test_read_rule_list )
     ght_rule_t *a, *b;
     ght_matcher_t *am, *bm;
 
-
     /* act */
     int result = read_rule_list( &parser, &rules );
 
@@ -1236,12 +1238,12 @@ START_TEST( test_read_rule_list )
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
-    ck_assert_ptr_ne( NULL, a );
+    ck_assert( NULL != a );
     ck_assert_int_eq( 8, (int)( a->focus_opacity * 10 ));
     ck_assert_int_eq( 4, (int)( a->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, a->matchers.head );
-    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+    ck_assert( NULL != a->matchers.head );
+    ck_assert( a->matchers.head == a->matchers.tail ); /* only one in list */
 
     am = (ght_matcher_t *) a->matchers.head;
     ck_assert_str_eq( "WM_CLASS", am->name );
@@ -1250,12 +1252,12 @@ START_TEST( test_read_rule_list )
 
     /* check the second rule */
     b = (ght_rule_t *) rules.tail;
-    ck_assert_ptr_ne( NULL, b );
+    ck_assert( NULL != b );
     ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
     ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, b->matchers.head );
-    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+    ck_assert( NULL != b->matchers.head );
+    ck_assert( b->matchers.head == b->matchers.tail ); /* only one in list */
 
     bm = (ght_matcher_t *) b->matchers.head;
     ck_assert_str_eq( "WM_OTHER", bm->name );
@@ -1287,12 +1289,12 @@ START_TEST( test_read_rule_list_combined_rule_body )
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
-    ck_assert_ptr_ne( NULL, a );
+    ck_assert( NULL != a );
     ck_assert_int_eq( 2, (int)( a->focus_opacity * 10 ));
     ck_assert_int_eq( 10, (int)( a->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, a->matchers.head );
-    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+    ck_assert( NULL != a->matchers.head );
+    ck_assert( a->matchers.head == a->matchers.tail ); /* only one in list */
 
     am = (ght_matcher_t *) a->matchers.head;
     ck_assert_str_eq( "WM_CLASS", am->name );
@@ -1301,12 +1303,12 @@ START_TEST( test_read_rule_list_combined_rule_body )
 
     /* check the second rule */
     b = (ght_rule_t *) rules.tail;
-    ck_assert_ptr_ne( NULL, b );
+    ck_assert( NULL != b );
     ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
     ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, b->matchers.head );
-    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+    ck_assert( NULL != b->matchers.head );
+    ck_assert( b->matchers.head == b->matchers.tail ); /* only one in list */
 
     bm = (ght_matcher_t *) b->matchers.head;
     ck_assert_str_eq( "WM_OTHER", bm->name );
@@ -1336,8 +1338,8 @@ START_TEST( test_read_rule_list_empty )
     /* assert */
     ck_assert_int_eq( 0, result );
 
-    ck_assert_ptr_eq( NULL, rules.head );
-    ck_assert_ptr_eq( NULL, rules.tail );
+    ck_assert( NULL == rules.head );
+    ck_assert( NULL == rules.tail );
 
     ck_assert_int_eq( false, parser.error );
 
@@ -1363,8 +1365,8 @@ START_TEST( test_read_rule_list_failed_parsing )
     /* assert */
     ck_assert_int_eq( 0, result );
 
-    ck_assert_ptr_eq( NULL, rules.head );
-    ck_assert_ptr_eq( NULL, rules.tail );
+    ck_assert( NULL == rules.head );
+    ck_assert( NULL == rules.tail );
 
     ck_assert_int_eq( true, parser.error );
 
@@ -1395,12 +1397,12 @@ START_TEST( test_ght_parse_rules_from_string )
 
     /* check the first rule */
     a = (ght_rule_t *) rules.head;
-    ck_assert_ptr_ne( NULL, a );
+    ck_assert( NULL != a );
     ck_assert_int_eq( 2, (int)( a->focus_opacity * 10 ));
     ck_assert_int_eq( 10, (int)( a->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, a->matchers.head );
-    ck_assert_ptr_eq( a->matchers.head, a->matchers.tail ); /* only one in list */
+    ck_assert( NULL != a->matchers.head );
+    ck_assert( a->matchers.head == a->matchers.tail ); /* only one in list */
 
     am = (ght_matcher_t *) a->matchers.head;
     ck_assert_str_eq( "WM_CLASS", am->name );
@@ -1409,12 +1411,12 @@ START_TEST( test_ght_parse_rules_from_string )
 
     /* check the second rule */
     b = (ght_rule_t *) rules.head->next;
-    ck_assert_ptr_ne( NULL, b );
+    ck_assert( NULL != b );
     ck_assert_int_eq( 2, (int)( b->focus_opacity * 10 ));
     ck_assert_int_eq( 10, (int)( b->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, b->matchers.head );
-    ck_assert_ptr_eq( b->matchers.head, b->matchers.tail ); /* only one in list */
+    ck_assert( NULL != b->matchers.head );
+    ck_assert( b->matchers.head == b->matchers.tail ); /* only one in list */
 
     bm = (ght_matcher_t *) b->matchers.head;
     ck_assert_str_eq( "WM_OTHER", bm->name );
@@ -1422,13 +1424,13 @@ START_TEST( test_ght_parse_rules_from_string )
 
     /* check the third rule */
     c = (ght_rule_t *) rules.tail;
-    ck_assert_ptr_ne( NULL, c );
+    ck_assert( NULL != c );
     ck_assert_int_eq( 8, (int)( c->focus_opacity * 10 ));
     ck_assert_int_eq( 4, (int)( c->normal_opacity * 10 ));
 
-    ck_assert_ptr_ne( NULL, c->matchers.head );
-    ck_assert_ptr_ne( NULL, c->matchers.head->next );
-    ck_assert_ptr_eq( c->matchers.head->next, c->matchers.tail ); /* two in list */
+    ck_assert( NULL != c->matchers.head );
+    ck_assert( NULL != c->matchers.head->next );
+    ck_assert( c->matchers.head->next == c->matchers.tail ); /* two in list */
 
     cm1 = (ght_matcher_t *) c->matchers.head;
     ck_assert_str_eq( "WM_CLASS", cm1->name );

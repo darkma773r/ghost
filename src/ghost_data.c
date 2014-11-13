@@ -12,7 +12,7 @@
 void *
 checked_malloc( size_t size )
 {
-    void *result = malloc( size );
+    void *result = calloc( 1, size );
     if ( result == NULL ) {
         fprintf( stderr,
                  "Fatal Error: Failed to allocate dynamic memory!\n" );

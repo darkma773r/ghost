@@ -11,8 +11,9 @@
 /* ################## GENERAL ######################## */
 
 /*
- * A version of malloc that fails the program if it cannot
- * allocate memory.
+ * Memory allocation function that fails the program if the
+ * given amount of memory cannot be allocated. The memory
+ * is set to zero before it is returned.
  */
 void *
 checked_malloc( size_t size );
