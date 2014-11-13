@@ -478,7 +478,7 @@ read_rule_body( ght_parser_t *p, ght_rule_t *r )
 
     if( match_char( p, BRACE_END )){
         /* log the rule body */
-        debug( "[read_rule_body] Found rule body [normal_opacity= %f, focus_opacity= %f]\n",
+        debug( "[read_rule_body] Found rule body [normal_opacity= %.2f, focus_opacity= %.2f]\n",
               r->normal_opacity, r->focus_opacity );
         return true;
     }
@@ -593,8 +593,8 @@ read_rule_list( ght_parser_t *p, list_t *rules)
                 info("    %s ( %s )\n", logged_matcher->name, logged_matcher->value );
             }
             info( "    {\n");
-            info( "        focus : %f;\n", rule->focus_opacity );
-            info( "        normal : %f;\n", rule->normal_opacity );
+            info( "        focus : %.2f;\n", rule->focus_opacity );
+            info( "        normal : %.2f;\n", rule->normal_opacity );
             info( "    }\n");
 
 #endif /* rule logging */
