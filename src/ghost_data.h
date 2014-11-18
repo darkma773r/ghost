@@ -1,5 +1,6 @@
 /* ghost_data.h
- * Header file for ghost data structures.
+ * Header file for ghost data structures; contains
+ * linked list and map functions and macros.
  */
 
 #ifndef _GHOST_DATA_H_
