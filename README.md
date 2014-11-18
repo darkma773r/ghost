@@ -16,6 +16,9 @@ and unfocused states in monitor mode.
 
 Ghost uses the [XCB library](http://xcb.freedesktop.org/). 
 
+For best results using monitor mode, Ghost should be started
+along with your window manager and compositing manager in your xinit script.
+
 Usage
 -----
 
