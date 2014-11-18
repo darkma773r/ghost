@@ -3,4 +3,4 @@
 # gives unlimited permission to copy, distribute and modify it.
 
 SUBDIRS = src tests
-dist_doc_DATA = README
+dist_doc_DATA = README.md
