@@ -33,18 +33,15 @@ containing the opacity rules for Ghost. If not given, opacity rules must be give
 string after all other arguments.	
 
 ### Examples
-**ghost -f rules.txt**
-
+**ghost -f rules.txt**  
 Applies "normal" opacity settings given in the file rules.txt
 to existing X windows.
 	
-**ghost -m "WM_CLASS(xterm){f:0.8;n:0.6;}"** 		
-
+**ghost -m "WM_CLASS(xterm){f:0.8;n:0.6;}"**  
 Monitors X events and applies "focus" and "normal" settings to windows
 with a class of "xterm" until the program is killed.
 
-**ghost -m -f rules.txt**
-
+**ghost -m -f rules.txt**  
 Monitors X events and applies the settings given in the file
 rules.txt to matching windows until the program is killed.
 
@@ -65,11 +62,11 @@ applies an opacity of 0.8 to focused windows and 0.6 to unfocused
 windows that have either a class of "xterm" and name of "home"
 or a class of "thunar":
 
-WM_CLASS( xterm ) WM_NAME( home ),
-WM_CLASS( thunar ) {
-	focus: 0.8;
-	normal: 0.6;
-} 
+WM_CLASS( xterm ) WM_NAME( home ),  
+WM_CLASS( thunar ) {  
+	focus: 0.8;  
+	normal: 0.6;  
+}   
 
 Lines starting with '#' are considered comments. String tokens
 can be surrounded with single or double quotes to 
