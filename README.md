@@ -61,13 +61,13 @@ Whitespace between two matchers represents a logical AND
 applies an opacity of 0.8 to focused windows and 0.6 to unfocused
 windows that have either a class of "xterm" and name of "home"
 or a class of "thunar":
-*
+
 WM_CLASS( xterm ) WM_NAME( home ),  
 WM_CLASS( thunar ) {  
 	focus: 0.8;  
 	normal: 0.6;  
 }   
-*
+
 Lines starting with '#' are considered comments. String tokens
 can be surrounded with single or double quotes to 
 allow strings with whitespace or non-alphanumeric
