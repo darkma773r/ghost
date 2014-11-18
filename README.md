@@ -56,8 +56,8 @@ braces. Properties and values are specified with the name of
 the X property followed by the desired value in parantheses.
 Whitespace between two matchers represents a logical AND 
 (higher precedence) while a comma represents a logical OR
-(lower precendence). 
-Example: The following rule
+(lower precendence).  
+Ex: The following rule
 applies an opacity of 0.8 to focused windows and 0.6 to unfocused
 windows that have either a class of "xterm" and name of "home"
 or a class of "thunar":
@@ -71,7 +71,8 @@ WM_CLASS( thunar ) {
 Lines starting with '#' are considered comments. String tokens
 can be surrounded with single or double quotes to 
 allow strings with whitespace or non-alphanumeric
-characters. Ex: 'WM_CLASS'( "some class" ) 
+characters.  
+Ex: 'WM_CLASS'( "some class" ) 
 
 The opacity settings "focus" and "normal" can be abbreviated
 with "f" and "n".
