@@ -34,14 +34,17 @@ string after all other arguments.
 
 ### Examples
 **ghost -f rules.txt**
+
 Applies "normal" opacity settings given in the file rules.txt
 to existing X windows.
 	
 **ghost -m "WM_CLASS(xterm){f:0.8;n:0.6;}"** 		
+
 Monitors X events and applies "focus" and "normal" settings to windows
 with a class of "xterm" until the program is killed.
 
 **ghost -m -f rules.txt**
+
 Monitors X events and applies the settings given in the file
 rules.txt to matching windows until the program is killed.
 
@@ -76,3 +79,5 @@ characters. Ex: 'WM_CLASS'( "some class" )
 The opacity settings "focus" and "normal" can be abbreviated
 with "f" and "n".
 
+Possible X property names and values can be found using the
+[xprop](http://linux.die.net/man/1/xprop) utility.
